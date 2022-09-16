@@ -1,5 +1,4 @@
 {
-    "python.formatting.provider": "yapf",
     "files.associations": {
         "fs.h": "c",
         "stat.h": "c",
