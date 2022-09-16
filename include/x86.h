@@ -1,3 +1,6 @@
+#pragma once
+#include "types.h"
+
 // Routines to let C code use special x86 instructions.
 
 static inline uchar

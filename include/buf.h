@@ -1,3 +1,6 @@
+#pragma once
+#include "types.h"
+
 struct buf {
   int flags;
   uint dev;

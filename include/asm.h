@@ -1,6 +1,7 @@
 //
 // assembler macros to create x86 segments
 //
+#pragma once
 
 #define SEG_NULLASM                                             \
         .word 0, 0;                                             \

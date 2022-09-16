@@ -1,4 +1,6 @@
 // See MultiProcessor Specification Version 1.[14]
+#pragma once
+#include "types.h"
 
 struct mp {             // floating pointer
   uchar signature[4];           // "_MP_"

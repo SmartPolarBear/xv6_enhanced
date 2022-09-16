@@ -1,3 +1,4 @@
+#pragma once
 struct buf;
 struct context;
 struct file;

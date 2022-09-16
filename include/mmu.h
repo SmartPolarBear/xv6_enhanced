@@ -1,5 +1,6 @@
 // This file contains definitions for the
 // x86 memory management unit (MMU).
+#pragma once
 
 // Eflags register
 #define FL_IF           0x00000200      // Interrupt Enable
@@ -22,6 +23,8 @@
 #define NSEGS     6
 
 #ifndef __ASSEMBLER__
+#include "types.h"
+
 // Segment Descriptor
 struct segdesc {
   uint lim_15_0 : 16;  // Low bits of segment limit

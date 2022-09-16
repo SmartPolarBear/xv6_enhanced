@@ -1,4 +1,5 @@
 // Memory layout
+#pragma once
 
 #define EXTMEM  0x100000            // Start of extended memory
 #define PHYSTOP 0xE000000           // Top physical memory
