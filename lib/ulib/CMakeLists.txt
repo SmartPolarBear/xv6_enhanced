@@ -4,7 +4,7 @@ add_library(ulib STATIC usys.S ulib.c printf.c umalloc.c entry.c)
 
 target_include_directories(ulib BEFORE
     PUBLIC .
-    PUBLIC ../..)
+    PUBLIC ../../include)
 
 set_property(SOURCE usys.S PROPERTY LANGUAGE C)
 
