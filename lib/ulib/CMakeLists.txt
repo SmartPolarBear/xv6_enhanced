@@ -20,7 +20,6 @@ target_compile_options(ulib BEFORE
     PRIVATE -MD
     PRIVATE -ggdb
     PRIVATE -m32
-    PRIVATE -Werror
     PRIVATE -fno-stack-protector
     PRIVATE -fno-omit-frame-pointer)
 

@@ -16,7 +16,6 @@ target_compile_options(_init BEFORE
     PRIVATE -MD
     PRIVATE -ggdb
     PRIVATE -m32
-    PRIVATE -Werror
     PRIVATE -fno-stack-protector
     PRIVATE -fno-omit-frame-pointer)
 

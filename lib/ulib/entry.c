@@ -3,8 +3,8 @@
 
 extern int main(int argc, char** argv);
 
-void _ulib_start()
+void _ulib_start(int argc, char** argv)
 {
-    main(0, 0);
-    exit();
+    int ret = main(argc, argv);
+    exit(/*ret*/);
 }
