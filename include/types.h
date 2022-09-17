@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef NULL
+#define NULL ((void*)0)
+#endif
 
 typedef unsigned int   uint;
 typedef unsigned short ushort;

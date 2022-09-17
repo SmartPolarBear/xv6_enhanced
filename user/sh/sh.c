@@ -95,7 +95,14 @@ main(void)
 		{
 			runcmd(parsecmd(buf));
 		}
-		wait();
+
+		int exit_code = 0;
+		wait(&exit_code);
+
+		if (exit_code)
+		{
+			printf(2, "Process exit with code %d\n", exit_code);
+		}
 	}
 	exit(0);
 }
@@ -501,7 +508,7 @@ runcmd(struct cmd *cmd)
 		{
 			runcmd(lcmd->left);
 		}
-		wait();
+		wait(NULL);
 		runcmd(lcmd->right);
 		break;
 
@@ -529,8 +536,8 @@ runcmd(struct cmd *cmd)
 		}
 		close(p[0]);
 		close(p[1]);
-		wait();
-		wait();
+		wait(NULL);
+		wait(NULL);
 		break;
 
 	case BACK:

@@ -1,5 +1,4 @@
 #pragma once
-#define NULL ((void*)0)
 
 struct buf;
 struct context;
