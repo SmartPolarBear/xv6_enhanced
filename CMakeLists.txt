@@ -38,7 +38,23 @@ add_custom_target(xv6_img ALL
         COMMENT "Generating xv6.img ramdisk")
 
 add_custom_target(fs_img ALL
-    COMMAND $<TARGET_FILE:mkfs> ${CMAKE_CURRENT_SOURCE_DIR}/fs.img ${CMAKE_CURRENT_SOURCE_DIR}/README $<TARGET_FILE:_zombie> $<TARGET_FILE:_wc> $<TARGET_FILE:_usertests> $<TARGET_FILE:_stressfs> $<TARGET_FILE:_sh> $<TARGET_FILE:_cat> $<TARGET_FILE:_echo> $<TARGET_FILE:_forktest> $<TARGET_FILE:_grep> $<TARGET_FILE:_init> $<TARGET_FILE:_kill> $<TARGET_FILE:_ln> $<TARGET_FILE:_ls> $<TARGET_FILE:_mkdir> $<TARGET_FILE:_rm>
+    COMMAND $<TARGET_FILE:mkfs> ${CMAKE_CURRENT_SOURCE_DIR}/fs.img ${CMAKE_CURRENT_SOURCE_DIR}/README
+        $<TARGET_FILE:_waittest>
+        $<TARGET_FILE:_zombie>
+        $<TARGET_FILE:_wc>
+        $<TARGET_FILE:_usertests>
+        $<TARGET_FILE:_stressfs>
+        $<TARGET_FILE:_sh>
+        $<TARGET_FILE:_cat>
+        $<TARGET_FILE:_echo>
+        $<TARGET_FILE:_forktest>
+        $<TARGET_FILE:_grep>
+        $<TARGET_FILE:_init>
+        $<TARGET_FILE:_kill>
+        $<TARGET_FILE:_ln>
+        $<TARGET_FILE:_ls>
+        $<TARGET_FILE:_mkdir>
+        $<TARGET_FILE:_rm>
     DEPENDS mkfs _cat _echo _forktest _grep _init _kill _ln _ls _mkdir _rm _sh _stressfs _usertests _wc _zombie
     BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/fs.img
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
