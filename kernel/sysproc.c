@@ -30,7 +30,31 @@ sys_exit(void)
 int
 sys_wait(void)
 {
-	return wait();
+	char *status = NULL;
+	if (argptr(0, &status, sizeof(int)))
+	{
+		return -1;
+	}
+
+	return wait((int *)status);
+}
+
+int
+sys_waitpid(void)
+{
+	int pid = -1;
+	if (argint(0, &pid) < 0)
+	{
+		return -1;
+	}
+
+	char *status = NULL;
+	if (argptr(1, &status, sizeof(int)))
+	{
+		return -1;
+	}
+
+	return waitpid(pid, (int *)status);
 }
 
 int

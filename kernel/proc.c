@@ -303,7 +303,7 @@ exit(int exit_code)
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
-wait(void)
+wait(int *exit_code)
 {
 	struct proc *p;
 	int havekids, pid;
@@ -333,6 +333,11 @@ wait(void)
 				p->name[0] = 0;
 				p->killed = 0;
 				p->state = UNUSED;
+				if (exit_code)
+				{
+					*exit_code = p->exit_code;
+				}
+
 				release(&ptable.lock);
 				return pid;
 			}
@@ -341,6 +346,10 @@ wait(void)
 		// No point waiting if we don't have any children.
 		if (!havekids || curproc->killed)
 		{
+			if (exit_code)
+			{
+				*exit_code = 0;
+			}
 			release(&ptable.lock);
 			return -1;
 		}
@@ -348,6 +357,25 @@ wait(void)
 		// Wait for children to exit.  (See wakeup1 call in proc_exit.)
 		sleep(curproc, &ptable.lock);  //DOC: wait-sleep
 	}
+}
+
+int waitpid(int pid, int *exitcode)
+{
+	if (pid == -1)
+	{
+		return wait(exitcode);
+	}
+
+	int p = wait(exitcode);
+	for (; p != pid; p = wait(exitcode))
+	{
+		if (p == -1)
+		{
+			return p;
+		}
+	}
+
+	return p;
 }
 
 //PAGEBREAK: 42
