@@ -43,3 +43,7 @@ add_custom_target(fs_img ALL
     BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/fs.img
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating fs.img ramdisk")
+
+add_custom_target(disk_images ALL
+        DEPENDS fs_img xv6_img
+        COMMENT "Generating all images including xv6.img and fs.img")
