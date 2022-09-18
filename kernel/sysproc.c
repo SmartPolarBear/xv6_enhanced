@@ -60,13 +60,25 @@ sys_waitpid(void)
 int
 sys_kill(void)
 {
-	int pid;
+	int pid = 0;
 
 	if (argint(0, &pid) < 0)
 	{
 		return -1;
 	}
-	return kill(pid);
+
+	int signal = 0;
+	if (argint(1, &signal) < 0)
+	{
+		return -1;
+	}
+
+	if (signal == SIGKILL)
+	{
+		killproc(pid);
+	}
+
+	return signal_deliver(pid, signal);
 }
 
 int

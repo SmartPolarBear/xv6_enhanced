@@ -23,9 +23,8 @@ static void wakeup1(void *chan);
 
 void default_signal_handler(int signum)
 {
-	// TODO: exit for some signals
 	cprintf("Unexpected signal %d, process killed.\n", signum);
-	kill(myproc()->pid);
+	myproc()->killed = 1; //TODO: some signals should not kill
 }
 
 void
@@ -578,7 +577,7 @@ wakeup(void *chan)
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
 int
-kill(int pid)
+killproc(int pid)
 {
 	struct proc *p;
 
@@ -667,6 +666,13 @@ int signal_deliver(int pid, int signal)
 		if (p->pid == pid)
 		{
 			p->pending_signals |= (1 << signal);
+
+			if (p->state == SLEEPING)
+			{
+				p->state = RUNNABLE;
+			}
+
+			release(&ptable.lock);
 			return p->pid;
 		}
 	}
