@@ -21,6 +21,12 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+void default_signal_handler(int signum)
+{
+	// TODO: exit for some signals
+	return;
+}
+
 void
 pinit(void)
 {
@@ -122,6 +128,12 @@ found:
 	p->context = (struct context *)sp;
 	memset(p->context, 0, sizeof *p->context);
 	p->context->eip = (uint)forkret;
+
+	for (int i = 0; i < NSIGNALS; i++)
+	{
+		p->signals[i] = default_signal_handler;
+	}
+	p->pending_signals = 0;
 
 	return p;
 }
@@ -596,12 +608,12 @@ void
 procdump(void)
 {
 	static char *states[] = {
-		[UNUSED]    "unused",
-		[EMBRYO]    "embryo",
-		[SLEEPING]  "sleep ",
-		[RUNNABLE]  "runble",
-		[RUNNING]   "run   ",
-		[ZOMBIE]    "zombie"
+		[UNUSED]   = "unused",
+		[EMBRYO]   = "embryo",
+		[SLEEPING] = "sleep ",
+		[RUNNABLE] = "runble",
+		[RUNNING]  = "run   ",
+		[ZOMBIE]   = "zombie"
 	};
 	int i;
 	struct proc *p;
@@ -631,4 +643,92 @@ procdump(void)
 		}
 		cprintf("\n");
 	}
+}
+
+sighandler_t signal(int signal, sighandler_t handler)
+{
+	if (signal >= NSIGNALS || signal < 0)
+	{
+		return NULL;
+	}
+
+	struct proc *proc = myproc();
+	sighandler_t ret = proc->signals[signal];
+	proc->signals[signal] = handler;
+	return ret;
+}
+
+int signal_deliver(int pid, int signal)
+{
+	acquire(&ptable.lock);
+	for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+	{
+		if (p->pid == pid)
+		{
+			p->pending_signals |= (1 << signal);
+			return p->pid;
+		}
+	}
+	release(&ptable.lock);
+	return -1;
+}
+
+void signal_return()
+{
+	struct proc *p = myproc();
+	p->tf->esp++; // pop signal number
+	struct trapframe *old_tf = (struct trapframe *)p->tf->esp;
+	*p->tf = *old_tf;
+}
+
+extern void *trampoline_start;
+extern void *trampoline_end;
+
+void run_signal(struct trapframe *tf)
+{
+	struct proc *p = myproc();
+	if (!p || (tf->cs & 3) == 0)
+	{
+		return;
+	}
+
+	int i = 0;
+	for (; i < NSIGNALS; i++)
+	{
+		if (p->pending_signals & (1 << i))
+		{
+			break;
+		}
+	}
+
+	if (i == NSIGNALS)
+	{
+		return;
+	}
+
+	if (p->signals[i] == default_signal_handler)
+	{
+		default_signal_handler(i);
+		return;
+	}
+
+	sighandler_t handler = p->signals[i];
+	uint esp_backup = p->tf->esp;
+
+	uint tramp_size = trampoline_end - trampoline_start;
+	p->tf->esp -= tramp_size;
+	memmove((void *)p->tf->esp, trampoline_start, tramp_size);
+	uint trampoline_addr = p->tf->esp;
+
+	p->tf->esp -= sizeof(struct trapframe);
+	memmove((void *)p->tf->esp, p->tf, sizeof(struct trapframe));
+	((struct trapframe *)p->tf->esp)->esp = esp_backup;
+
+	p->tf->esp -= sizeof(uint);
+	*((uint *)p->tf->esp) = i;
+
+	p->tf->esp -= sizeof(uint);
+	*((uint *)p->tf->esp) = trampoline_addr;
+
+	p->tf->eip = (uint)handler;
 }

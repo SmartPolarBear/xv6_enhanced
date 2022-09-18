@@ -130,3 +130,9 @@ sys_uptime(void)
 	release(&tickslock);
 	return xticks;
 }
+
+int sys_sigreturn(void)
+{
+	signal_return();
+	return 0;
+}
