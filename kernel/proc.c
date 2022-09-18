@@ -24,7 +24,8 @@ static void wakeup1(void *chan);
 void default_signal_handler(int signum)
 {
 	// TODO: exit for some signals
-	return;
+	cprintf("Unexpected signal %d, process killed.\n", signum);
+	kill(myproc()->pid);
 }
 
 void
