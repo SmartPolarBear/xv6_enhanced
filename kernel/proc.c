@@ -723,6 +723,8 @@ void run_signal(struct trapframe *tf)
 		return;
 	}
 
+	p->pending_signals &= ~(1 << i);
+
 	if (p->signals[i] == default_signal_handler)
 	{
 		default_signal_handler(i);

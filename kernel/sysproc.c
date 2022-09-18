@@ -73,7 +73,7 @@ sys_kill(void)
 		return -1;
 	}
 
-	if (signal == SIGKILL)
+	if (signal == SIGKILL) // SIGKILL should not be modified
 	{
 		return killproc(pid);
 	}
@@ -143,6 +143,23 @@ sys_uptime(void)
 	xticks = ticks;
 	release(&tickslock);
 	return xticks;
+}
+
+int sys_signal(void)
+{
+	int signum = 0;
+	if (argint(0, &signum) < 0)
+	{
+		return -1;
+	}
+
+	sighandler_t handler = NULL;
+	if (argint(1, &signum) < 0)
+	{
+		return -1;
+	}
+
+	return (int)signal(signum, handler);
 }
 
 int sys_sigreturn(void)

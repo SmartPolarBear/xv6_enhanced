@@ -24,3 +24,4 @@
 #define SYS_close  21
 #define SYS_waitpid 22
 #define SYS_sigreturn 23
+#define SYS_signal 24
