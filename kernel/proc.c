@@ -23,8 +23,18 @@ static void wakeup1(void *chan);
 
 void default_signal_handler(int signum)
 {
+	if (signum == SIGCHLD)
+	{
+		return;// Ignored
+	}
+	else if (signum == SIGKILL)
+	{
+		myproc()->killed = 1;
+		return;
+	}
+
 	cprintf("Unexpected signal %d, process killed.\n", signum);
-	myproc()->killed = 1; //TODO: some signals should not kill
+	myproc()->killed = 1;
 }
 
 void

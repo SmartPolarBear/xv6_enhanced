@@ -75,10 +75,12 @@ sys_kill(void)
 
 	if (signal == SIGKILL)
 	{
-		killproc(pid);
+		return killproc(pid);
 	}
-
-	return signal_deliver(pid, signal);
+	else
+	{
+		return signal_deliver(pid, signal);
+	}
 }
 
 int
