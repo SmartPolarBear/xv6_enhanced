@@ -9,7 +9,7 @@ void terminate_signal(int signum)
 	switch (signum)
 	{
 	case SIGFPE:
-		printf(2, "Divided by 0\n");
+		printf(2, "Floating point error.\n");
 		break;
 	default:
 		break;

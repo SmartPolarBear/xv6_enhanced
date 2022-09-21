@@ -167,3 +167,8 @@ int sys_sigreturn(void)
 	signal_return();
 	return 0;
 }
+
+int sys_fgproc(void)
+{
+	return myproc()->pid;
+}
