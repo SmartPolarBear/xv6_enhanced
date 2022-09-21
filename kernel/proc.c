@@ -145,6 +145,8 @@ found:
 	}
 	p->pending_signals = 0;
 
+	p->alarm_interval = p->alarm_ticks = -1;
+
 	return p;
 }
 
@@ -438,6 +440,16 @@ scheduler(void)
 
 			swtch(&(c->scheduler), p->context);
 			switchkvm();
+
+			if (p->alarm_interval > 0)
+			{
+				p->alarm_ticks--;
+				if (p->alarm_ticks == 0)
+				{
+					p->alarm_ticks = p->alarm_interval;
+					p->pending_signals |= (1 << SIGALRM);
+				}
+			}
 
 			// Process is done running for now.
 			// It should have changed its p->state before coming back.

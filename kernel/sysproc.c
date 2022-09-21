@@ -172,3 +172,21 @@ int sys_fgproc(void)
 {
 	return myproc()->pid;
 }
+
+int sys_alarm(void)
+{
+	int ticks = 0;
+	if (argint(0, &ticks) < 0)
+	{
+		return -1;
+	}
+
+	myproc()->alarm_interval = ticks;
+	myproc()->alarm_ticks = ticks;
+
+	if (myproc()->alarm_interval > 0)
+	{
+		return myproc()->alarm_ticks;
+	}
+	return 0;
+}

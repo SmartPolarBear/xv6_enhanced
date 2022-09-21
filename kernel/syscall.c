@@ -120,6 +120,7 @@ extern int sys_uptime(void);
 extern int sys_sigreturn(void);
 extern int sys_signal(void);
 extern int sys_fgproc(void);
+extern int sys_alarm(void);
 
 static int (*syscalls[])(void) = {
 	[SYS_fork]    = sys_fork,
@@ -146,7 +147,8 @@ static int (*syscalls[])(void) = {
 	[SYS_close]   =sys_close,
 	[SYS_sigreturn]=sys_sigreturn,
 	[SYS_signal]  =sys_signal,
-	[SYS_fgproc] = sys_fgproc
+	[SYS_fgproc] = sys_fgproc,
+	[SYS_alarm]=sys_alarm
 };
 
 void

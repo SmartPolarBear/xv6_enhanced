@@ -39,6 +39,7 @@ add_custom_target(xv6_img ALL
 
 add_custom_target(fs_img ALL
     COMMAND $<TARGET_FILE:mkfs> ${CMAKE_CURRENT_SOURCE_DIR}/fs.img ${CMAKE_CURRENT_SOURCE_DIR}/README
+        $<TARGET_FILE:_alarmhello>
         $<TARGET_FILE:_div0>
         $<TARGET_FILE:_waittest>
         $<TARGET_FILE:_zombie>

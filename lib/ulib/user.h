@@ -29,6 +29,7 @@ int sleep(int);
 int uptime(void);
 int signal(int, sighandler_t);
 int fgproc();
+int alarm(int);
 
 // ulib.c
 int stat(const char *, struct stat *);

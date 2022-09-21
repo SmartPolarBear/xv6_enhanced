@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
+add_subdirectory(alarmhello)
 add_subdirectory(cat)
 add_subdirectory(div0)
 add_subdirectory(echo)

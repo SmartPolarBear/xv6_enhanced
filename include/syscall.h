@@ -26,3 +26,4 @@
 #define SYS_sigreturn 23
 #define SYS_signal 24
 #define SYS_fgproc 25
+#define SYS_alarm 26

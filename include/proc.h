@@ -64,6 +64,9 @@ struct proc
 
 	sighandler_t signals[NSIGNALS];
 	uint pending_signals;
+
+	int alarm_ticks;
+	int alarm_interval;
 };
 
 // Process memory is laid out contiguously, low addresses first:
