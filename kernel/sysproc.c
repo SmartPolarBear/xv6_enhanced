@@ -153,13 +153,13 @@ int sys_signal(void)
 		return -1;
 	}
 
-	sighandler_t handler = NULL;
-	if (argint(1, &signum) < 0)
+	int handler = 0;
+	if (argint(1, &handler) < 0)
 	{
 		return -1;
 	}
 
-	return (int)signal(signum, handler);
+	return (int)signal(signum, (sighandler_t)handler);
 }
 
 int sys_sigreturn(void)

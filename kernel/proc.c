@@ -698,8 +698,8 @@ void signal_return()
 	*p->tf = *old_tf;
 }
 
-extern void *trampoline_start;
-extern void *trampoline_end;
+extern void *trampoline_head;
+extern void *trampoline_tail;
 
 void run_signal(struct trapframe *tf)
 {
@@ -734,9 +734,11 @@ void run_signal(struct trapframe *tf)
 	sighandler_t handler = p->signals[i];
 	uint esp_backup = p->tf->esp;
 
-	uint tramp_size = trampoline_end - trampoline_start;
+	uint tramp_size = (uint)&trampoline_tail - (uint)&trampoline_head;
 	p->tf->esp -= tramp_size;
-	memmove((void *)p->tf->esp, trampoline_start, tramp_size);
+
+	memmove((void *)(p->tf->esp), trampoline_head, tramp_size);
+
 	uint trampoline_addr = p->tf->esp;
 
 	p->tf->esp -= sizeof(struct trapframe);
