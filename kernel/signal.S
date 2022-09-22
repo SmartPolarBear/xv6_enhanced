@@ -10,5 +10,3 @@ int $T_SYSCALL
 ret
 trampoline_tail:
 nop
-nop
-nop

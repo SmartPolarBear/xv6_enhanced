@@ -11,8 +11,8 @@ void alarm_handle(int signum)
 		alarm(-1);
 	}
 	i++;
-//	printf(1, "hello, %d\n", i);
-//	alarm(200 * i);
+	printf(1, "hello, %d\n", i);
+	alarm(200 * i);
 }
 
 int main(int argc, char *argv[])

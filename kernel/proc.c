@@ -705,7 +705,7 @@ int signal_deliver(int pid, int signal)
 void signal_return()
 {
 	struct proc *p = myproc();
-	p->tf->esp++; // pop signal number
+	p->tf->esp += sizeof(uint); // pop signal number
 	struct trapframe *old_tf = (struct trapframe *)p->tf->esp;
 	*p->tf = *old_tf;
 }
@@ -748,8 +748,7 @@ void run_signal(struct trapframe *tf)
 
 	uint tramp_size = (uint)&trampoline_tail - (uint)&trampoline_head;
 	p->tf->esp -= tramp_size;
-
-	memmove((void *)(p->tf->esp), trampoline_head, tramp_size);
+	memmove((void *)(p->tf->esp), (void *)&trampoline_head, tramp_size);
 
 	uint trampoline_addr = p->tf->esp;
 
