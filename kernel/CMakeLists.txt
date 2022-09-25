@@ -106,6 +106,7 @@ add_executable(kernel
         sysproc.c
         trap.c
         uart.c
+        vfs.c
         vm.c)
 
 add_dependencies(kernel vectors_S initcode_obj entryother_obj bootblock_obj)

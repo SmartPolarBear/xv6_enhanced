@@ -129,7 +129,6 @@ int signal_deliver(int pid, int signal);
 void signal_return();
 void run_signal(struct trapframe *);
 
-
 // swtch.S
 void swtch(struct context **, struct context *);
 
@@ -197,3 +196,14 @@ void clearpteu(pde_t *pgdir, char *uva);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+// offset of a struct member
+#define offsetof(type, member)  __builtin_offsetof (type, member)
+
+// get struct pointer from member
+#define container_of(ptr, type, member) ({                      \
+        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+        (type *)( (char *)__mptr - offsetof(type,member) );})
+
+#define LIST_POISON1 0xbad0
+#define LIST_POISON2 0xbad1

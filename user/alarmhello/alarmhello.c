@@ -12,7 +12,7 @@ void alarm_handle(int signum)
 	}
 	i++;
 	printf(1, "hello, %d\n", i);
-	alarm(200 * i);
+	alarm(50 * i);
 }
 
 int main(int argc, char *argv[])
