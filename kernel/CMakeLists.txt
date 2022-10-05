@@ -101,6 +101,7 @@ add_executable(kernel
         sleeplock.c
         spinlock.c
         string.c
+        slab.c
         syscall.c
         sysfile.c
         sysproc.c
