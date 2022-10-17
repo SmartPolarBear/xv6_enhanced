@@ -96,6 +96,7 @@ add_executable(kernel
         log.c
         main.c
         mp.c
+        memory.c
         picirq.c
         pipe.c
         proc.c
