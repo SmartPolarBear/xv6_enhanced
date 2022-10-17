@@ -5,6 +5,7 @@
 #include "list.h"
 
 #define KMEM_CACHE_NAME_MAXLEN 16
+#define SIZED_CACHE_COUNT 8
 
 typedef struct kmem_cache
 {
@@ -12,12 +13,14 @@ typedef struct kmem_cache
 
 	list_head_t link;
 
-	size_t obj_size, obk_count;
+	size_t obj_size, obj_count;
 	uint flags;
 	spinlock_t lock;
 
 	char name[KMEM_CACHE_NAME_MAXLEN];
 } kmem_cache_t;
+
+typedef uint kmem_bufctl;
 
 void kmem_init();
 kmem_cache_t *kmem_cache_create(const char *name,

@@ -136,6 +136,7 @@ void swtch(struct context **, struct context *);
 void acquire(struct spinlock *);
 void getcallerpcs(void *, uint *);
 int holding(struct spinlock *);
+void assert_holding(struct spinlock *);
 void initlock(struct spinlock *, char *);
 void release(struct spinlock *);
 void pushcli(void);

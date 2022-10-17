@@ -84,6 +84,7 @@ add_custom_command(TARGET initcode_obj POST_BUILD
 add_executable(kernel
         bio.c
         console.c
+        debug.c
         exec.c
         file.c
         fs.c
