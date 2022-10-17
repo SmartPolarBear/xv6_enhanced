@@ -8,7 +8,10 @@ typedef unsigned int uint;
 typedef unsigned short ushort;
 typedef unsigned char uchar;
 typedef uint pde_t;
+
+#ifdef __KERNEL__
 typedef uint size_t;
+#endif
 
 typedef void (*sighandler_t)(int);
 

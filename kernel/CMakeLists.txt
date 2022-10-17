@@ -111,6 +111,9 @@ add_executable(kernel
         vfs.c
         vm.c)
 
+target_compile_definitions(kernel
+        PRIVATE -D__KERNEL__)
+
 add_dependencies(kernel vectors_S initcode_obj entryother_obj bootblock_obj)
 
 target_include_directories(kernel PRIVATE ../include)

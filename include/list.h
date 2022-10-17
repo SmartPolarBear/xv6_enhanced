@@ -5,7 +5,6 @@
 #include "types.h"
 #include "defs.h"
 
-
 #define LIST_HEAD(name) \
         list_head_t name = LIST_HEAD_INIT(name)
 
@@ -45,8 +44,8 @@ static inline void __list_del(list_head_t *prev, list_head_t *next)
 static inline void list_del(list_head_t *entry)
 {
 	__list_del(entry->prev, entry->next);
-	entry->prev = LIST_POISON1;
-	entry->next = LIST_POISON2;
+	entry->prev = (list_head_t *)LIST_POISON1;
+	entry->next = (list_head_t *)LIST_POISON2;
 }
 
 static inline void list_replace(list_head_t *old, list_head_t *neo)
@@ -126,3 +125,6 @@ static inline void list_rotate_left(list_head_t *head)
     for (pos = (head)->prev, n = pos->prev; \
          pos != (head); \
          pos = n, n = pos->prev)
+
+
+

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "spinlock.h"
+
 typedef struct consolectl
 {
 	struct spinlock lock;
