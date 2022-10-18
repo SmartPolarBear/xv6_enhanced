@@ -9,7 +9,7 @@ void *kmalloc(size_t size, gfp_t flags)
 	return NULL;
 }
 
-void kmfree(void *ptr)
+void kfree(void *ptr)
 {
 
 }

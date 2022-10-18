@@ -23,7 +23,7 @@ vm.c
 proc.h
 proc.c
 swtch.S
-kalloc.c
+page_alloc.c
 
 # system calls
 traps.h

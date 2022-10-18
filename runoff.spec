@@ -50,7 +50,7 @@ even: proc.c   # VERY important
 #     allocuvm deallocuvm freevm
 left: vm.c
 
-even: kalloc.c  # mild preference
+even: page_alloc.c  # mild preference
 
 # syscall.h either
 # trapasm.S either

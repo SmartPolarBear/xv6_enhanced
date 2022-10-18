@@ -66,9 +66,9 @@ void ioapicenable(int irq, int cpu);
 extern uchar ioapicid;
 void ioapicinit(void);
 
-// kalloc.c
-char *kalloc(void);
-void kfree(char *);
+// page_alloc.c
+char *page_alloc(void);
+void page_free(char *);
 void kinit1(void *, void *);
 void kinit2(void *, void *);
 

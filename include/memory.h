@@ -18,4 +18,4 @@ enum gfp_flags
 };
 
 void *kmalloc(size_t size, gfp_t flags);
-void kmfree(void *ptr);
+void kfree(void *ptr);

@@ -38,7 +38,7 @@ static inline slab_t *cache_grow(kmem_cache_t *cache)
 {
 	assert_holding(&cache->lock);
 
-	char *page = kalloc();
+	char *page = page_alloc();
 	if (!page)
 	{
 		return NULL;
@@ -77,7 +77,7 @@ static inline void slab_destory(slab_t *slab)
 
 	list_del(&slab->link);
 
-	kfree((char *)slab);
+	page_free((char *)slab);
 }
 
 static inline slab_t *slab_find(kmem_cache_t *cache, void *obj)
