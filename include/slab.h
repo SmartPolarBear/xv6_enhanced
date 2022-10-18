@@ -7,6 +7,11 @@
 #define KMEM_CACHE_NAME_MAXLEN 16
 #define SIZED_CACHE_COUNT 8
 
+#define SIZED_INDEX_TO_SIZE(index) (1 << (4 + (index)))
+
+#define SIZED_CACHE_MIN SIZED_INDEX_TO_SIZE(0)
+#define SIZED_CACHE_MAX SIZED_INDEX_TO_SIZE(SIZED_CACHE_COUNT-1)
+
 typedef struct kmem_cache
 {
 	list_head_t full, partial, free;
@@ -21,6 +26,8 @@ typedef struct kmem_cache
 } kmem_cache_t;
 
 typedef uint kmem_bufctl;
+
+extern kmem_cache_t *sized_caches[SIZED_CACHE_COUNT];
 
 void kmem_init();
 kmem_cache_t *kmem_cache_create(const char *name,

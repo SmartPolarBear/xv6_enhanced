@@ -4,6 +4,8 @@
 
 #pragma once
 
+extern void panic(char *) __attribute__((noreturn));
+
 #define KDEBUG_ASSERT(cond) \
     do { \
         if (!(cond)) { \

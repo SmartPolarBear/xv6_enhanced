@@ -23,6 +23,8 @@ void bwrite(struct buf *);
 void consoleinit(void);
 void cprintf(char *, ...);
 void consoleintr(int(*)(void));
+
+// debug.c
 void panic(char *) __attribute__((noreturn));
 
 // exec.c

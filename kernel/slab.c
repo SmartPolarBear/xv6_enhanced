@@ -126,7 +126,7 @@ void kmem_init()
 	{
 		char name[8] = "sized_";
 		name[6] = '0' + i;
-		sized_caches[i] = kmem_cache_create(name, 1 << (i + 4), 0);
+		sized_caches[i] = kmem_cache_create(name, SIZED_INDEX_TO_SIZE(i), 0);
 	}
 }
 
