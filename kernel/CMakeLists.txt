@@ -86,6 +86,7 @@ add_executable(kernel
         console.c
         debug.c
         exec.c
+        e1000.c
         file.c
         fs.c
         ide.c
@@ -97,6 +98,7 @@ add_executable(kernel
         main.c
         mp.c
         memory.c
+        net.c
         picirq.c
         pipe.c
         proc.c
@@ -133,7 +135,7 @@ set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/swtch.S PROPERTY LANGUAGE C)
 set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/entry.S PROPERTY LANGUAGE C)
 set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/signal.S PROPERTY LANGUAGE C)
 
-target_link_libraries(kernel PRIVATE lwipcore)
+#target_link_libraries(kernel PRIVATE lwipcore)
 
 target_compile_options(kernel BEFORE
         PRIVATE -fno-pic
