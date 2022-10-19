@@ -112,6 +112,8 @@ add_executable(kernel
         vfs.c
         vm.c)
 
+add_subdirectory(lib)
+
 target_compile_definitions(kernel
         PRIVATE -D__KERNEL__)
 
@@ -130,6 +132,8 @@ set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/vectors.S PROPERTY LANGUAGE C)
 set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/swtch.S PROPERTY LANGUAGE C)
 set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/entry.S PROPERTY LANGUAGE C)
 set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/signal.S PROPERTY LANGUAGE C)
+
+target_link_libraries(kernel PRIVATE lwipcore)
 
 target_compile_options(kernel BEFORE
         PRIVATE -fno-pic
