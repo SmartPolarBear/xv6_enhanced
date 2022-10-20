@@ -82,6 +82,7 @@ add_custom_command(TARGET initcode_obj POST_BUILD
 
 # kernel
 add_executable(kernel
+        atoi.c
         bio.c
         console.c
         debug.c
@@ -138,6 +139,7 @@ set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/signal.S PROPERTY LANGUAGE C)
 #target_link_libraries(kernel PRIVATE lwipcore)
 
 target_compile_options(kernel BEFORE
+        PRIVATE -U__USE_EXTERN_INLINES
         PRIVATE -fno-pic
         PRIVATE -static
         PRIVATE -fno-builtin
