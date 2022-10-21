@@ -86,6 +86,7 @@ add_executable(kernel
         bio.c
         console.c
         debug.c
+        date.c
         exec.c
         e1000.c
         file.c
@@ -113,6 +114,7 @@ add_executable(kernel
         trap.c
         uart.c
         vfs.c
+        virtio_nic.c
         vm.c)
 
 add_subdirectory(lib)

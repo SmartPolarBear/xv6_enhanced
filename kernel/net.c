@@ -7,6 +7,8 @@
 #include "param.h"
 #include "memlayout.h"
 #include "spinlock.h"
+#include "date.h"
+
 #include "lwip/dhcp.h"
 #include "lwip/etharp.h"
 #include "lwip/init.h"
@@ -139,13 +141,8 @@ netinit(void)
 uint32
 sys_now(void)
 {
-	/* good enough for qemu */
-	return r_mtime() / 10000;
-}
+	rtcdate_t date;
+	cmostime(&date);
 
-unsigned long
-r_mtime(void)
-{
-//	return *(uint64 *)CLINT_MTIME;
-	return -1;
+	return unixime_in_seconds(&date) * 1000;
 }

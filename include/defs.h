@@ -27,6 +27,9 @@ void consoleintr(int(*)(void));
 // debug.c
 void panic(char *) __attribute__((noreturn));
 
+// date.c
+uint32 unixime_in_seconds(const struct rtcdate* date);
+
 // exec.c
 int exec(char *, char **);
 
