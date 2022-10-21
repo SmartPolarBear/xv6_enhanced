@@ -213,3 +213,12 @@ void clearpteu(pde_t *pgdir, char *uva);
 
 #define LIST_POISON1 0xbad0
 #define LIST_POISON2 0xbad1
+
+// net.c
+void            netinit(void);
+int             nettimer(void);
+
+// virtio_nic.c
+int             virtio_net_init(int, void *);
+int             virtio_net_send(int, const void *data, int len);
+int             virtio_net_recv(int, void *data, int len);

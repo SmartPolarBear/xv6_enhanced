@@ -20,13 +20,16 @@ struct netif netif[NNETIF];
 err_t
 linkoutput(struct netif *netif, struct pbuf *p)
 {
-//	int n = (uintptr_t)netif->state;
-//	struct pbuf *q;
-//
-//	for (q = p; q; q = q->next) {
-//		if(virtio_net_send(n, q->payload, q->len))
-//			return ERR_IF;
-//	}
+	int n = (uintptr_t)netif->state;
+	struct pbuf *q;
+
+	for (q = p; q; q = q->next)
+	{
+		if (virtio_net_send(n, q->payload, q->len))
+		{
+			return ERR_IF;
+		}
+	}
 
 	return ERR_OK;
 }
@@ -34,45 +37,49 @@ linkoutput(struct netif *netif, struct pbuf *p)
 int
 linkinput(struct netif *netif)
 {
-//	int n = (uintptr_t)netif->state, len;
-//	struct pbuf *p;
-//
-//	p = pbuf_alloc(PBUF_RAW, 1514, PBUF_RAM);
-//	if(!p)
-//		return 0;
-//
-//	len = virtio_net_recv(n, p->payload, p->len);
-//
-//	if(len > 0){
-//		/* shrink pbuf to actual size */
-//		pbuf_realloc(p, len);
-//
-//		if(netif->input(p, netif) == ERR_OK)
-//			return len;
-//
-//		printf("linkinput: drop packet (%d bytes)\n", len);
-//	}
-//
-//	pbuf_free(p);
-//	return len;
-	return 0;
+	int n = (uintptr_t)netif->state, len;
+	struct pbuf *p;
+
+	p = pbuf_alloc(PBUF_RAW, 1514, PBUF_RAM);
+	if (!p)
+	{
+		return 0;
+	}
+
+	len = virtio_net_recv(n, p->payload, p->len);
+
+	if (len > 0)
+	{
+		/* shrink pbuf to actual size */
+		pbuf_realloc(p, len);
+
+		if (netif->input(p, netif) == ERR_OK)
+		{
+			return len;
+		}
+
+		cprintf("linkinput: drop packet (%d bytes)\n", len);
+	}
+
+	pbuf_free(p);
+	return len;
 }
 
 err_t
 linkinit(struct netif *netif)
 {
-//	int n = (uintptr_t)netif->state;
-//
-//	if (virtio_net_init(n, &netif->hwaddr))
-//	{
-//		return ERR_IF;
-//	}
-//
-//	netif->hwaddr_len = ETH_HWADDR_LEN;
-//	netif->linkoutput = linkoutput;
-//	netif->output = etharp_output;
-//	netif->mtu = 1500;
-//	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET;
+	int n = (uintptr_t)netif->state;
+
+	if (virtio_net_init(n, &netif->hwaddr))
+	{
+		return ERR_IF;
+	}
+
+	netif->hwaddr_len = ETH_HWADDR_LEN;
+	netif->linkoutput = linkoutput;
+	netif->output = etharp_output;
+	netif->mtu = 1500;
+	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET;
 
 	return ERR_OK;
 }
@@ -80,47 +87,47 @@ linkinit(struct netif *netif)
 void
 netadd(int n)
 {
-//	struct netif *new = &netif[n];
-//	int i;
-//	char addr[IPADDR_STRLEN_MAX], netmask[IPADDR_STRLEN_MAX], gw[IPADDR_STRLEN_MAX];
-//
-//	if (!netif_add_noaddr(new, (void *)(uintptr_t)n, linkinit, netif_input))
-//	{
-//		panic("netadd");
-//	}
-//
-//	new->name[0] = 'e';
-//	new->name[1] = 'n';
-//	netif_set_link_up(new);
-//	netif_set_up(new);
-//
-//	printf("net %d: mac ", n);
-//	for (i = 0; i < ETH_HWADDR_LEN; ++i)
-//	{
-//		if (i)
-//		{
-//			printf(":");
-//		}
-//		if (new->hwaddr[i] < 0x10)
-//		{
-//			printf("0");
-//		}
-//		printf("%x", new->hwaddr[i]);
-//	}
-//	printf("\n");
-//
-//	dhcp_start(new);
-//	/* wait until DHCP succeeds */
-//	while (!dhcp_supplied_address(new))
-//	{
-//		linkinput(new);
-//		sys_check_timeouts();
-//	}
-//
-//	ipaddr_ntoa_r(netif_ip_addr4(new), addr, sizeof(addr));
-//	ipaddr_ntoa_r(netif_ip_netmask4(new), netmask, sizeof(netmask));
-//	ipaddr_ntoa_r(netif_ip_gw4(new), gw, sizeof(gw));
-//	printf("net %d: addr %s netmask %s gw %s\n", n, addr, netmask, gw);
+	struct netif *new = &netif[n];
+	int i;
+	char addr[IPADDR_STRLEN_MAX], netmask[IPADDR_STRLEN_MAX], gw[IPADDR_STRLEN_MAX];
+
+	if (!netif_add_noaddr(new, (void *)(uintptr_t)n, linkinit, netif_input))
+	{
+		panic("netadd");
+	}
+
+	new->name[0] = 'e';
+	new->name[1] = 'n';
+	netif_set_link_up(new);
+	netif_set_up(new);
+
+	cprintf("net %d: mac ", n);
+	for (i = 0; i < ETH_HWADDR_LEN; ++i)
+	{
+		if (i)
+		{
+			cprintf(":");
+		}
+		if (new->hwaddr[i] < 0x10)
+		{
+			cprintf("0");
+		}
+		cprintf("%x", new->hwaddr[i]);
+	}
+	cprintf("\n");
+
+	dhcp_start(new);
+	/* wait until DHCP succeeds */
+	while (!dhcp_supplied_address(new))
+	{
+		linkinput(new);
+		sys_check_timeouts();
+	}
+
+	ipaddr_ntoa_r(netif_ip_addr4(new), addr, sizeof(addr));
+	ipaddr_ntoa_r(netif_ip_netmask4(new), netmask, sizeof(netmask));
+	ipaddr_ntoa_r(netif_ip_gw4(new), gw, sizeof(gw));
+	cprintf("net %d: addr %s netmask %s gw %s\n", n, addr, netmask, gw);
 }
 
 int
@@ -143,6 +150,12 @@ sys_now(void)
 {
 	rtcdate_t date;
 	cmostime(&date);
-
 	return unixime_in_seconds(&date) * 1000;
+}
+
+// for random number. TODO: use better random number generator
+unsigned long
+r_mtime(void)
+{
+	return sys_now();
 }
