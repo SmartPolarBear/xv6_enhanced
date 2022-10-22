@@ -21,6 +21,35 @@ typedef uint32 size_t;
 typedef uint32 uintptr_t;
 #endif
 
+// Efficient min and max operations
+#define MIN(_a, _b)                        \
+({                                \
+    typeof(_a) __a = (_a);                    \
+    typeof(_b) __b = (_b);                    \
+    __a <= __b ? __a : __b;                    \
+})
+#define MAX(_a, _b)                        \
+({                                \
+    typeof(_a) __a = (_a);                    \
+    typeof(_b) __b = (_b);                    \
+    __a >= __b ? __a : __b;                    \
+})
+
+// Rounding operations (efficient when n is a power of 2)
+// Round down to the nearest multiple of n
+#define ROUNDDOWN(a, n)                        \
+({                                \
+    uint32 __a = (uint32) (a);                \
+    (typeof(a)) (__a - __a % (n));                \
+})
+
+// Round up to the nearest multiple of n
+#define ROUNDUP(a, n)                        \
+({                                \
+    uint32 __n = (uint32) (n);                \
+    (typeof(a)) (ROUNDDOWN((uint32) (a) + __n - 1, __n));    \
+})
+
 typedef void (*sighandler_t)(int);
 
 typedef struct list_head

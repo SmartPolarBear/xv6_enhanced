@@ -12,6 +12,7 @@ struct sleeplock;
 struct stat;
 struct superblock;
 struct trapframe;
+struct pci_func;
 
 // bio.c
 void binit(void);
@@ -28,7 +29,7 @@ void consoleintr(int(*)(void));
 void panic(char *) __attribute__((noreturn));
 
 // date.c
-uint32 unixime_in_seconds(const struct rtcdate* date);
+uint32 unixime_in_seconds(const struct rtcdate *date);
 
 // exec.c
 int exec(char *, char **);
@@ -214,16 +215,21 @@ void clearpteu(pde_t *pgdir, char *uva);
 #define LIST_POISON1 0xbad0
 #define LIST_POISON2 0xbad1
 
+// pci.c
+
+void pci_init(void);
+void pci_func_enable(struct pci_func *f);
+
 // net.c
-void            netinit(void);
-int             nettimer(void);
+void netinit(void);
+int nettimer(void);
 
 // virtio_nic.c
-int             virtio_net_init(int id, void *hwaddr);
-int             virtio_net_send(int id, const void *data, int len);
-int             virtio_net_recv(int id, void *data, int len);
+int virtio_net_init(int id, void *hwaddr);
+int virtio_net_send(int id, const void *data, int len);
+int virtio_net_recv(int id, void *data, int len);
 
 // e1000_nic.c
-int             e1000_net_init(int id, void *);
-int             e1000_net_send(int id, const void *data, int len);
-int             e1000_net_recv(int id, void *data, int len);
+int e1000_net_init(int id, void *);
+int e1000_net_send(int id, const void *data, int len);
+int e1000_net_recv(int id, void *data, int len);
