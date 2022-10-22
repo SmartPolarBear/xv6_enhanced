@@ -17,7 +17,8 @@ typedef uint pde_t;
 typedef uint gfp_t;
 
 #ifdef __KERNEL__
-typedef uint size_t;
+typedef uint32 size_t;
+typedef uint32 uintptr_t;
 #endif
 
 typedef void (*sighandler_t)(int);

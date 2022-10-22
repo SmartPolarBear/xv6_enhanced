@@ -88,7 +88,7 @@ add_executable(kernel
         debug.c
         date.c
         exec.c
-        e1000.c
+        e1000_nic.c
         file.c
         fs.c
         ide.c
@@ -101,6 +101,7 @@ add_executable(kernel
         mp.c
         memory.c
         net.c
+        pci.c
         picirq.c
         pipe.c
         proc.c
