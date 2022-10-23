@@ -30,6 +30,7 @@ main(void)
 	tvinit();        // trap vectors
 	binit();         // buffer cache
 	fileinit();      // file table
+	e1000_init();    // e1000 driver
 	pci_init();      //pci
 	ideinit();       // disk
 	startothers();   // start other processors

@@ -5,6 +5,11 @@
 #include "types.h"
 #include "defs.h"
 
+int virtio_nic_attach(struct pci_func *pcif)
+{
+	return 0;
+}
+
 int virtio_net_init(int id, void *hwaddr)
 {
 

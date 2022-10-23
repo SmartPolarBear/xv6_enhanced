@@ -225,11 +225,14 @@ void netinit(void);
 int nettimer(void);
 
 // virtio_nic.c
+int virtio_nic_attach(struct pci_func *pcif);
 int virtio_net_init(int id, void *hwaddr);
 int virtio_net_send(int id, const void *data, int len);
 int virtio_net_recv(int id, void *data, int len);
 
 // e1000_nic.c
+void e1000_init(void);
+int e1000_nic_attach(struct pci_func *pcif);
 int e1000_net_init(int id, void *);
 int e1000_net_send(int id, const void *data, int len);
 int e1000_net_recv(int id, void *data, int len);

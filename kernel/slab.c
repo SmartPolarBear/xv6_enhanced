@@ -180,7 +180,7 @@ void *kmem_cache_alloc(kmem_cache_t *cache)
 		slab = list_entry(cache->free.next, slab_t, link);
 	}
 
-	assert_holding(&slab->lock);
+	acquire(&slab->lock);
 
 	void *obj = slab->objects + slab->next_free * cache->obj_size;
 	slab->next_free = slab->bufctl[slab->next_free];
