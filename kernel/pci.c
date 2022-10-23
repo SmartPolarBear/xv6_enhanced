@@ -138,7 +138,7 @@ pci_print_func(struct pci_func *f)
 		class = pci_classes[PCI_CLASS(f->dev_class)];
 	}
 
-	cprintf("PCI: %02x:%02x.%d: %04x:%04x: class: %x.%x (%s) irq: %d\n",
+	cprintf("PCI: %x:%x.%d: %x:%x: class: %x.%x (%s) irq: %d\n",
 			f->bus->busno, f->dev, f->func,
 			PCI_VENDOR(f->dev_id), PCI_PRODUCT(f->dev_id),
 			PCI_CLASS(f->dev_class), PCI_SUBCLASS(f->dev_class), class,
@@ -198,7 +198,7 @@ pci_bridge_attach(struct pci_func *pcif)
 
 	if (PCI_BRIDGE_IO_32BITS(ioreg))
 	{
-		cprintf("PCI: %02x:%02x.%d: 32-bit bridge IO not supported.\n",
+		cprintf("PCI: %x:%x.%d: 32-bit bridge IO not supported.\n",
 				pcif->bus->busno, pcif->dev, pcif->func);
 		return 0;
 	}
@@ -209,7 +209,7 @@ pci_bridge_attach(struct pci_func *pcif)
 	nbus.busno = (busreg >> PCI_BRIDGE_BUS_SECONDARY_SHIFT) & 0xff;
 
 #ifdef SHOW_PCI_DEVS
-	cprintf("PCI: %02x:%02x.%d: bridge to PCI bus %d--%d\n",
+	cprintf("PCI: %x:%x.%d: bridge to PCI bus %d--%d\n",
 			pcif->bus->busno, pcif->dev, pcif->func,
 			nbus.busno,
 			(busreg >> PCI_BRIDGE_BUS_SUBORDINATE_SHIFT) & 0xff);
@@ -277,7 +277,7 @@ pci_func_enable(struct pci_func *f)
 
 		if (size && !base)
 		{
-			cprintf("PCI device %02x:%02x.%d (%04x:%04x) "
+			cprintf("PCI device %x:%x.%d (%x:%x) "
 					"may be misconfigured: "
 					"region %d: base 0x%x, size %d\n",
 					f->bus->busno, f->dev, f->func,
@@ -286,7 +286,7 @@ pci_func_enable(struct pci_func *f)
 		}
 	}
 
-	cprintf("PCI function %02x:%02x.%d (%04x:%04x) enabled\n",
+	cprintf("PCI function %x:%x.%d (%x:%x) enabled\n",
 			f->bus->busno, f->dev, f->func,
 			PCI_VENDOR(f->dev_id), PCI_PRODUCT(f->dev_id));
 }
@@ -297,5 +297,5 @@ void pci_init(void)
 	memset(&root_bus, 0, sizeof(root_bus));
 
 	int devs = pci_scan_bus(&root_bus);
-	cprintf("PCI: Found %d devices", devs);
+	cprintf("PCI: Found %d devices\n", devs);
 }
