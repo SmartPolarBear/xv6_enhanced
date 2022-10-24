@@ -26,11 +26,35 @@ size_t netcard_count = 0;
 kmem_cache_t *netcard_cache = NULL;
 spinlock_t netcard_list_lock;
 
+netcard_t *find_card_by_id(int n)
+{
+	list_head_t *pos;
+	acquire(&netcard_list_lock);
+
+	list_for_each(pos, &netcard_list)
+	{
+		netcard_t *card = list_entry(pos, netcard_t, link);
+		if (card->id == n)
+		{
+			release(&netcard_list_lock);
+			return card;
+		}
+	}
+
+	release(&netcard_list_lock);
+	return NULL;
+}
+
 err_t
 linkoutput(struct netif *netif, struct pbuf *p)
 {
 	netcard_t *card = netif->state;
 	struct pbuf *q;
+
+	if (!card->opts->send)
+	{
+		return ERR_IF;
+	}
 
 	for (q = p; q; q = q->next)
 	{
@@ -56,6 +80,11 @@ linkinput(struct netif *netif)
 	}
 
 	netcard_t *card = netif->state;
+	if (!card->opts->receive)
+	{
+		return 0;
+	}
+
 	len = card->opts->receive(card, p->payload, p->len);
 
 	if (len > 0)
@@ -80,6 +109,11 @@ linkinit(struct netif *netif)
 {
 	netcard_t *card = netif->state;
 
+	if (!card->opts->init)
+	{
+		return ERR_IF;
+	}
+
 	if (card->opts->init(card, &netif->hwaddr))
 	{
 		return ERR_IF;
@@ -92,25 +126,6 @@ linkinit(struct netif *netif)
 	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET;
 
 	return ERR_OK;
-}
-
-netcard_t *find_card_by_id(int n)
-{
-	list_head_t *pos;
-	acquire(&netcard_list_lock);
-
-	list_for_each(pos, &netcard_list)
-	{
-		netcard_t *card = list_entry(pos, netcard_t, link);
-		if (card->id == n)
-		{
-			release(&netcard_list_lock);
-			return card;
-		}
-	}
-
-	release(&netcard_list_lock);
-	return NULL;
 }
 
 void
@@ -192,6 +207,7 @@ void nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, 
 
 	memset(card, 0, sizeof(struct netcard));
 	strncpy(card->name, name, sizeof(card->name));
+
 	card->func = pcif;
 	card->opts = opts;
 	card->prvt = prvt;
@@ -200,6 +216,8 @@ void nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, 
 	acquire(&netcard_list_lock);
 	list_add(&card->link, &netcard_list);
 	release(&netcard_list_lock);
+
+	cprintf("nic_register: %s registered\n", card->name);
 }
 
 void netstart(void)
