@@ -197,7 +197,7 @@ netinit(void)
 
 }
 
-void nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt)
+netcard_t *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt)
 {
 	struct netcard *card = kmem_cache_alloc(netcard_cache);
 	if (!card)
@@ -218,6 +218,21 @@ void nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, 
 	release(&netcard_list_lock);
 
 	cprintf("nic_register: %s registered\n", card->name);
+	return card;
+}
+
+struct netcard *nic_unregister(struct netcard *nic)
+{
+	acquire(&netcard_list_lock);
+	list_del(&nic->link);
+	release(&netcard_list_lock);
+
+	return nic;
+}
+
+void nic_free(struct netcard *nic)
+{
+	kmem_cache_free(netcard_cache, nic);
 }
 
 void netstart(void)
