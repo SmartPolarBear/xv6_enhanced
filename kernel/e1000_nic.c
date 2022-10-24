@@ -29,8 +29,8 @@ typedef struct e1000
 	struct TD *transmit_desc_list; // 32
 	struct RD *receive_desc_list; // 128
 
-	struct packet *tbuf; // 32
-	struct packet *rbuf; // 128
+	struct packet *tbuf[32];
+	struct packet *rbuf[128];
 
 	volatile uint32 *mmio_base;
 	size_t mmio_size;
@@ -60,7 +60,7 @@ void e1000_init(void)
 	}
 }
 
-static inline int transmit_init(netcard_t *card)
+static inline void transmit_init(netcard_t *card)
 {
 	e1000_t *e1000 = (e1000_t *)card->prvt;
 
@@ -80,10 +80,9 @@ static inline int transmit_init(netcard_t *card)
 
 	//Transmit Inter Packets Gap register
 	pciw(e1000, E1000_TIPG, 10 | (8 << 10) | (12 << 20));
-	return 0;
 }
 
-static inline int receive_init(netcard_t *card)
+static inline void receive_init(netcard_t *card)
 {
 	e1000_t *e1000 = (e1000_t *)card->prvt;
 	//Receive Address Register
@@ -95,7 +94,7 @@ static inline int receive_init(netcard_t *card)
 	for (int i = 0; i < 128; i++)
 		pciw(e1000, E1000_MTA + i, 0);
 	//Base Address register
-	pciw(e1000, E1000_RDBAL, V2P(e1000, receive_desc_list));
+	pciw(e1000, E1000_RDBAL, V2P(e1000->receive_desc_list));
 	pciw(e1000, E1000_RDBAH, 0);
 
 	// Descriptor Length
@@ -107,13 +106,92 @@ static inline int receive_init(netcard_t *card)
 
 	pciw(e1000, E1000_RCTL, RCTL_EN | RCTL_LPE | RCTL_LBM_NO | RCTL_SZ_2048 | RCTL_SECRC);
 
-	return 0;
 }
 
 static inline int desc_init(netcard_t *card)
 {
 	e1000_t *e1000 = (e1000_t *)card->prvt;
+	// TD=384, RD=1536, 1 packet =2048
 
+	// TD and RD use a page. waste some bytes
+	char *td_rd = page_alloc();
+	if (!td_rd)
+	{
+		goto fail;
+	}
+
+	e1000->transmit_desc_list = (struct TD *)td_rd;
+	e1000->receive_desc_list = (struct RD *)(td_rd + 2048);
+
+	// two packet per page
+	int i = 0;
+	for (i = 0; i < 32; i += 2)
+	{
+		char *p = page_alloc();
+		if (!p)
+		{
+			cprintf("e1000: page_alloc failed for tbuf\n");
+			goto fail_tbuf;
+		}
+
+		e1000->tbuf[i] = (struct packet *)p;
+		e1000->tbuf[i + 1] = (struct packet *)(p + PKTSIZE);
+	}
+
+	i = 0;
+	for (i = 0; i < 128; i += 2)
+	{
+		char *p = page_alloc();
+		if (!p)
+		{
+			cprintf("e1000: page_alloc failed for rbuf\n");
+			goto fail_rbuf;
+		}
+
+		e1000->rbuf[i] = (struct packet *)p;
+		e1000->rbuf[i + 1] = (struct packet *)(p + PKTSIZE);
+	}
+
+	// setup descs
+
+	// send
+	for (i = 0; i < 32; ++i)
+	{
+		memset(&e1000->transmit_desc_list[i], 0, sizeof(struct TD));
+		e1000->transmit_desc_list[i].addr = V2P(&e1000->tbuf[i]);
+		e1000->transmit_desc_list[i].status = TXD_STAT_DD;
+		e1000->transmit_desc_list[i].cmd = TXD_CMD_RS | TXD_CMD_EOP;
+	}
+
+	// receive
+	for (i = 0; i < 128; ++i)
+	{
+		memset(&e1000->receive_desc_list[i], 0, sizeof(struct RD));
+		e1000->receive_desc_list[i].addr = V2P(&e1000->rbuf[i]);
+	}
+
+	return 0;
+
+fail_rbuf:
+	for (int j = 0; j < i; j += 2)
+	{
+		if (e1000->rbuf[j])
+		{
+			page_free((char *)e1000->rbuf[j]);
+		}
+	}
+	i = 32;
+fail_tbuf:
+	for (int j = 0; j < i; j += 2)
+	{
+		if (e1000->tbuf[j])
+		{
+			page_free((char *)e1000->tbuf[j]);
+		}
+	}
+	page_free(td_rd);
+fail:
+	return -1;
 }
 
 int e1000_nic_attach(struct pci_func *pcif)
@@ -140,23 +218,16 @@ int e1000_nic_attach(struct pci_func *pcif)
 
 	netcard_t *nic = nic_register(name, pcif, &e1000_opts, card);
 
-	if (!desc_init(nic))
+	if (desc_init(nic))
 	{
-		cprintf("e1000_nic_attach: desc_init failed");
+		cprintf("e1000_nic_attach: desc_init failed\n");
 		goto cleanup;
 	}
 
-	if (!transmit_init(nic))
-	{
-		cprintf("e1000_nic_attach: transmit_init failed");
-		goto cleanup;
-	}
+	transmit_init(nic);
+	receive_init(nic);
 
-	if (!receive_init(nic))
-	{
-		cprintf("e1000_nic_attach: receive_init failed");
-		goto cleanup;
-	}
+	cprintf("e1000: init done\n");
 
 	return TRUE;
 
