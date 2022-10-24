@@ -8,6 +8,9 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "date.h"
+#include "list.h"
+#include "slab.h"
+#include "net.h"
 
 #include "lwip/dhcp.h"
 #include "lwip/etharp.h"
@@ -17,15 +20,21 @@
 
 struct netif netif[NNETIF];
 
+list_head_t netcard_list = LIST_HEAD_INIT(netcard_list);
+size_t netcard_count = 0;
+
+kmem_cache_t *netcard_cache = NULL;
+spinlock_t netcard_list_lock;
+
 err_t
 linkoutput(struct netif *netif, struct pbuf *p)
 {
-	int n = (uintptr_t)netif->state;
+	netcard_t *card = netif->state;
 	struct pbuf *q;
 
 	for (q = p; q; q = q->next)
 	{
-		if (virtio_net_send(n, q->payload, q->len))
+		if (card->opts->send(card, q->payload, q->len))
 		{
 			return ERR_IF;
 		}
@@ -37,7 +46,7 @@ linkoutput(struct netif *netif, struct pbuf *p)
 int
 linkinput(struct netif *netif)
 {
-	int n = (uintptr_t)netif->state, len;
+	int len;
 	struct pbuf *p;
 
 	p = pbuf_alloc(PBUF_RAW, 1514, PBUF_RAM);
@@ -46,7 +55,8 @@ linkinput(struct netif *netif)
 		return 0;
 	}
 
-	len = virtio_net_recv(n, p->payload, p->len);
+	netcard_t *card = netif->state;
+	len = card->opts->receive(card, p->payload, p->len);
 
 	if (len > 0)
 	{
@@ -68,9 +78,9 @@ linkinput(struct netif *netif)
 err_t
 linkinit(struct netif *netif)
 {
-	int n = (uintptr_t)netif->state;
+	netcard_t *card = netif->state;
 
-	if (virtio_net_init(n, &netif->hwaddr))
+	if (card->opts->init(card, &netif->hwaddr))
 	{
 		return ERR_IF;
 	}
@@ -84,14 +94,35 @@ linkinit(struct netif *netif)
 	return ERR_OK;
 }
 
+netcard_t *find_card_by_id(int n)
+{
+	list_head_t *pos;
+	acquire(&netcard_list_lock);
+
+	list_for_each(pos, &netcard_list)
+	{
+		netcard_t *card = list_entry(pos, netcard_t, link);
+		if (card->id == n)
+		{
+			release(&netcard_list_lock);
+			return card;
+		}
+	}
+
+	release(&netcard_list_lock);
+	return NULL;
+}
+
 void
 netadd(int n)
 {
 	struct netif *new = &netif[n];
+	netcard_t *card = find_card_by_id(n);
+
 	int i;
 	char addr[IPADDR_STRLEN_MAX], netmask[IPADDR_STRLEN_MAX], gw[IPADDR_STRLEN_MAX];
 
-	if (!netif_add_noaddr(new, (void *)(uintptr_t)n, linkinit, netif_input))
+	if (!netif_add_noaddr(new, (void *)card, linkinit, netif_input))
 	{
 		panic("netadd");
 	}
@@ -140,6 +171,45 @@ nettimer(void)
 void
 netinit(void)
 {
+	list_init(&netcard_list);
+	initlock(&netcard_list_lock, "netcard_list");
+
+	netcard_cache = kmem_cache_create("netcard_cache", sizeof(struct netcard), 0);
+	if (!netcard_cache)
+	{
+		panic("netinit: kmem_cache_create");
+	}
+
+}
+
+void nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt)
+{
+	struct netcard *card = kmem_cache_alloc(netcard_cache);
+	if (!card)
+	{
+		panic("nic_register: kmem_cache_alloc");
+	}
+
+	memset(card, 0, sizeof(struct netcard));
+	strncpy(card->name, name, sizeof(card->name));
+	card->func = pcif;
+	card->opts = opts;
+	card->prvt = prvt;
+	card->id = netcard_count++;
+
+	acquire(&netcard_list_lock);
+	list_add(&card->link, &netcard_list);
+	release(&netcard_list_lock);
+}
+
+void netstart(void)
+{
+	if (list_empty(&netcard_list))
+	{
+		cprintf("netstart: no netcard");
+		return;
+	}
+
 	lwip_init();
 	netadd(0);
 	netif_set_default(&netif[0]);

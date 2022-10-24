@@ -10,17 +10,17 @@ int virtio_nic_attach(struct pci_func *pcif)
 	return 0;
 }
 
-int virtio_net_init(int id, void *hwaddr)
+int virtio_net_init(void *state, void *hwaddr)
 {
 
 }
 
-int virtio_net_send(int id, const void *data, int len)
+int virtio_net_send(void *state, const void *data, int len)
 {
 
 }
 
-int virtio_net_recv(int id, void *data, int len)
+int virtio_net_recv(void *state, void *data, int len)
 {
 
 }
