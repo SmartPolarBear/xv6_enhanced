@@ -207,3 +207,15 @@ struct trapframe
 	ushort ss;
 	ushort padding6;
 };
+
+// x86 trick: each inb of port 0x84 takes about 1.25us
+// Super stupid delay logic. Don't even know if this works
+// or understand what port 0x84 does.
+// Could not find an explanantion.
+static inline void udelay(unsigned int u)
+{
+	unsigned int i;
+	for (i = 0; i < u; i++)
+		inb(0x84);
+}
+
