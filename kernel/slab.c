@@ -45,7 +45,9 @@ static inline slab_t *cache_grow(kmem_cache_t *cache)
 	}
 
 	slab_t *slab = (slab_t *)page;
+	memset(slab, 0, sizeof(slab_t));
 
+	initlock(&slab->lock, "slab");
 	acquire(&slab->lock);
 
 	slab->cache = cache;
@@ -114,6 +116,8 @@ void kmem_init()
 		.flags = 0,
 		.name = "cache_cache",
 	};
+
+	initlock(&caches_lock, "cache_cache");
 
 	list_init(&cache_cache.full);
 	list_init(&cache_cache.partial);

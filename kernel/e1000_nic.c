@@ -38,6 +38,21 @@ pciw(e1000_card_t *c, int index, int value)
 	c->mmio_e1000[index];
 }
 
+static e1000_card_t *find_card(int id)
+{
+	list_head_t *pos = NULL;
+	list_for_each(pos, &e1000_cards)
+	{
+		e1000_card_t *c = list_entry(pos, e1000_card_t, link);
+		if (c->id == id)
+		{
+			return c;
+		}
+	}
+
+	return NULL;
+}
+
 void e1000_init(void)
 {
 	list_init(&e1000_cards);

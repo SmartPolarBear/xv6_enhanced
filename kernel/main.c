@@ -5,6 +5,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
+#include "slab.h"
 
 static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
@@ -24,6 +25,7 @@ main(void)
 	seginit();       // segment descriptors
 	picinit();       // disable pic
 	ioapicinit();    // another interrupt controller
+	kmem_init();      // slab allocator
 	consoleinit();   // console hardware
 	uartinit();      // serial port
 	pinit();         // process table
