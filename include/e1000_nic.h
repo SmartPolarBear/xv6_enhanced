@@ -6,6 +6,35 @@
 
 #include "types.h"
 
+#define E1000_CTRL 0x00000 // Device Control - RW
+#define E1000_CTRL_SLU 0x40 // Set link up
+#define E1000_CTRL_ASDE 0x20 // Auto speed detect enable
+#define E1000_CTRL_SWDPIO 0x10 // SW Defineable Power Indication
+#define E1000_CTRL_RST 0x04000000 // Global reset
+#define E1000_CTRL_RFCE 0x08000000 // Receive Flow Control enable
+#define E1000_CTRL_TFCE 0x10000000 // Transmit flow control enable
+#define E1000_CTRL_VME 0x40000000 // IEEE VLAN mode enable
+#define E1000_CTRL_PHY_RST 0x80000000 // PHY reset
+
+#define E1000_STATUS 0x00008 // Device Status - RO
+
+#define E1000_EECD 0x00010 // EEPROM/Flash Control - RW
+
+#define E1000_EERD 0x00014 // EEPROM Read - RW
+#define E1000_EERD_START 0x1 // Start Read
+#define E1000_EERD_DONE 0x10 // Read Done
+
+#define E1000_EEPROM_ETHERNET_ADDR_2_1 0x00
+#define E1000_EEPROM_ETHERNET_ADDR_4_3 0x01
+#define E1000_EEPROM_ETHERNET_ADDR_6_5 0x02
+
+#define E1000_CTRL_EXT 0x00018 // Extended Device Control - RW
+#define E1000_FLA 0x0001C // Flash Access - RW
+#define E1000_MDIC 0x00020 // MDI Control - RW
+#define E1000_SCTL 0x00024 // SerDes Control - RW
+#define E1000_FCAL 0x00028 // Flow Control Address Low - RW
+#define E1000_FCAH 0x0002C // Flow Control Address High -RW
+
 #define E1000_TCTL 0x00400/4
 #define TCTL_EN 0x2
 #define TCTL_PSP 0x8

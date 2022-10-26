@@ -32,7 +32,7 @@ OBJS = \
 # TOOLPREFIX = i386-jos-elf
 
 # Using native tools (e.g., on X86 Linux)
-#TOOLPREFIX = 
+#TOOLPREFIX =
 
 # Try to infer the correct TOOLPREFIX if not set
 ifndef TOOLPREFIX
@@ -174,7 +174,7 @@ fs.img: mkfs README $(UPROGS)
 
 -include *.d
 
-clean: 
+clean:
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm *.sym vectors.S bootblock entryother \
 	initcode initcode.out kernel xv6.img fs.img kernelmemfs \
@@ -213,14 +213,17 @@ QEMUSMPOPTS= -smp cpus=$(CPUS),cores=1,threads=1,sockets=$(CPUS)
 
 QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -m 512 $(QEMUSMPOPTS) $(QEMUEXTRA)
 
-#PORT7	:= $(shell expr $(GDBPORT) + 1)
-#PORT80	:= $(shell expr $(GDBPORT) + 2)
-#
-## net card
-#QEMUOPTS += -device e1000,netdev=en0 -object filter-dump,id=f0,netdev=en0,file=en0.pcap
-#
-## port fowarding
-#QEMUOPTS += -netdev type=user,id=en0,hostfwd=tcp::$(PORT80)-:80,hostfwd=tcp::$(PORT7)-:7
+QEMUEXTRA =-monitor telnet:127.0.0.1:55555,server,nowait
+
+PORT7	:= $(shell expr $(GDBPORT) + 1)
+PORT80	:= $(shell expr $(GDBPORT) + 2)
+
+# net card
+E1000_MACADDR = 52:54:00:12:34:56
+QEMUOPTS += -device e1000,netdev=en0,mac=$(E1000_MACADDR) -object filter-dump,id=f0,netdev=en0,file=en0.pcap
+
+# port fowarding
+QEMUOPTS += -netdev type=user,id=en0,hostfwd=tcp::$(PORT80)-:80,hostfwd=tcp::$(PORT7)-:7
 
 qemu: # fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)

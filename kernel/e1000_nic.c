@@ -39,16 +39,32 @@ typedef struct e1000
 kmem_cache_t *e1000_cache = NULL;
 size_t e1000_count = 0;
 
-static inline void pciw(e1000_t *card, int index, uint32 value)
+static void pciw(e1000_t *card, int index, uint32 value)
 {
 	card->mmio_base[index] = value;
 	card->mmio_base[index];
 }
 
-static inline uint32 pcir(e1000_t *card, int index)
+static uint32 pcir(e1000_t *card, int index)
 {
 	card->mmio_base[index];
 	return card->mmio_base[index];
+}
+
+uint16 eepromr(e1000_t *card, uint32 addr)
+{
+	// Order controller to read a byte of mac address
+	// EERD.ADDR = address in eeprom space and set EERD.START
+	pciw(card, E1000_EERD, (addr << 8) | E1000_EERD_START);
+
+	// Wait until the reading is done, and then get the data
+	while ((pcir(card, E1000_EERD) & E1000_EERD_DONE) == 0)
+	{
+		/* Wait while it's not done */
+	}
+
+	// Return the data in EERD.DATA
+	return (pcir(card, E1000_EERD) >> 16);
 }
 
 void e1000_init(void)
@@ -85,8 +101,8 @@ static inline void transmit_init(netcard_t *card)
 static inline void receive_init(netcard_t *card)
 {
 	e1000_t *e1000 = (e1000_t *)card->prvt;
-	//Receive Address Register
-	//pciw(E1000_RA, 0x52540012);
+
+	// MAC: 52:54:00:12:34:56
 	pciw(e1000, E1000_RA, 0x12005452);
 	pciw(e1000, E1000_RA + 1, 0x5634 | E1000_RAV);
 
@@ -119,6 +135,7 @@ static inline int desc_init(netcard_t *card)
 	{
 		goto fail;
 	}
+	memset(td_rd, 0, PGSIZE);
 
 	e1000->transmit_desc_list = (struct TD *)td_rd;
 	e1000->receive_desc_list = (struct RD *)(td_rd + 2048);
@@ -134,6 +151,7 @@ static inline int desc_init(netcard_t *card)
 			goto fail_tbuf;
 		}
 
+		memset(p, 0, PGSIZE);
 		e1000->tbuf[i] = (struct packet *)p;
 		e1000->tbuf[i + 1] = (struct packet *)(p + PKTSIZE);
 	}
@@ -148,6 +166,7 @@ static inline int desc_init(netcard_t *card)
 			goto fail_rbuf;
 		}
 
+		memset(p, 0, PGSIZE);
 		e1000->rbuf[i] = (struct packet *)p;
 		e1000->rbuf[i + 1] = (struct packet *)(p + PKTSIZE);
 	}
@@ -213,10 +232,20 @@ int e1000_nic_attach(struct pci_func *pcif)
 	card->mmio_size = mmio_size;
 
 	uint32 id = e1000_count++;
+
 	char name[8] = "e1000_";
 	name[6] = '0' + id;
 
 	netcard_t *nic = nic_register(name, pcif, &e1000_opts, card);
+
+	// Reset the card
+	pciw(card, E1000_CTRL, E1000_CTRL_RST);
+	while (pcir(card, E1000_CTRL) & E1000_CTRL_RST)
+	{
+		// wait
+	}
+
+//	cprintf("%x", eepromr(card, E1000_EEPROM_ETHERNET_ADDR_2_1));
 
 	if (desc_init(nic))
 	{
@@ -242,6 +271,11 @@ int e1000_net_init(void *state, void *hwaddr)
 {
 	netcard_t *card = (netcard_t *)state;
 	e1000_t *e1000 = (e1000_t *)card->prvt;
+
+	//Read Hardware(MAC) address from the device
+	*((uint32 *)hwaddr) = pcir(e1000, E1000_RA);
+	*((uint16 *)hwaddr + 2) = pcir(e1000, E1000_RA + 1);
+
 	return 0;
 }
 
