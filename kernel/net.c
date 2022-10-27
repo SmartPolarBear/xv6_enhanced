@@ -253,7 +253,8 @@ sys_now(void)
 {
 	rtcdate_t date;
 	cmostime(&date);
-	return unixime_in_seconds(&date) * 1000;
+	int ret = unixime_in_seconds(&date) * 1000;
+	return ret;
 }
 
 // for random number. TODO: use better random number generator

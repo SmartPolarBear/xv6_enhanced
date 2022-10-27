@@ -61,7 +61,8 @@
 #define RCTL_EN             0x00000002
 #define RCTL_LPE            0x00000020
 #define RCTL_LBM_NO         0x00000000
-#define RCTL_SZ_2048        0x00000000
+#define RCTL_BAM            0x00008000
+#define RCTL_SZ_2048     	0x00030000
 #define RCTL_SECRC          0x04000000
 #define E1000_RDBAL    0x02800/4
 #define E1000_RDBAH    0x02804/4
@@ -71,6 +72,7 @@
 #define E1000_MTA      0x05200/4
 #define E1000_RA       0x05400/4
 #define E1000_RAV      0x80000000
+#define E1000_IMS      0x000D0/4
 
 struct TD //tx_desc
 {

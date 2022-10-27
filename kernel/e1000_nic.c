@@ -51,22 +51,6 @@ static uint32 pcir(e1000_t *card, int index)
 	return card->mmio_base[index];
 }
 
-uint16 eepromr(e1000_t *card, uint32 addr)
-{
-	// Order controller to read a byte of mac address
-	// EERD.ADDR = address in eeprom space and set EERD.START
-	pciw(card, E1000_EERD, (addr << 8) | E1000_EERD_START);
-
-	// Wait until the reading is done, and then get the data
-	while ((pcir(card, E1000_EERD) & E1000_EERD_DONE) == 0)
-	{
-		/* Wait while it's not done */
-	}
-
-	// Return the data in EERD.DATA
-	return (pcir(card, E1000_EERD) >> 16);
-}
-
 void e1000_init(void)
 {
 	e1000_cache = kmem_cache_create("e1000", sizeof(e1000_t), 0);
@@ -109,6 +93,9 @@ static inline void receive_init(netcard_t *card)
 	//Multicast Table Array
 	for (int i = 0; i < 128; i++)
 		pciw(e1000, E1000_MTA + i, 0);
+
+	pciw(e1000, E1000_IMS, 0);
+
 	//Base Address register
 	pciw(e1000, E1000_RDBAL, V2P(e1000->receive_desc_list));
 	pciw(e1000, E1000_RDBAH, 0);
@@ -120,8 +107,7 @@ static inline void receive_init(netcard_t *card)
 	pciw(e1000, E1000_RDH, 0);
 	pciw(e1000, E1000_RDT, 128 - 1);
 
-	pciw(e1000, E1000_RCTL, RCTL_EN | RCTL_LPE | RCTL_LBM_NO | RCTL_SZ_2048 | RCTL_SECRC);
-
+	pciw(e1000, E1000_RCTL, RCTL_EN | RCTL_SECRC | RCTL_BAM);
 }
 
 static inline int desc_init(netcard_t *card)
@@ -129,16 +115,21 @@ static inline int desc_init(netcard_t *card)
 	e1000_t *e1000 = (e1000_t *)card->prvt;
 	// TD=384, RD=1536, 1 packet =2048
 
-	// TD and RD use a page. waste some bytes
-	char *td_rd = page_alloc();
-	if (!td_rd)
+	// TD and RD use a page separately.
+	char *td = page_alloc();
+	if (!td)
 	{
-		goto fail;
+		goto fail_td;
 	}
-	memset(td_rd, 0, PGSIZE);
+	memset(td, 0, PGSIZE);
+	e1000->transmit_desc_list = (struct TD *)td;
 
-	e1000->transmit_desc_list = (struct TD *)td_rd;
-	e1000->receive_desc_list = (struct RD *)(td_rd + 2048);
+	char *rd = page_alloc();
+	if (!rd)
+	{
+		goto fail_rd;
+	}
+	e1000->receive_desc_list = (struct RD *)rd;
 
 	// two packet per page
 	int i = 0;
@@ -172,12 +163,12 @@ static inline int desc_init(netcard_t *card)
 	}
 
 	// setup descs
-
 	// send
 	for (i = 0; i < 32; ++i)
 	{
 		memset(&e1000->transmit_desc_list[i], 0, sizeof(struct TD));
-		e1000->transmit_desc_list[i].addr = V2P(&e1000->tbuf[i]);
+		e1000->transmit_desc_list[i].addr = V2P(e1000->tbuf[i]);
+		e1000->transmit_desc_list[i].length = PKTSIZE;
 		e1000->transmit_desc_list[i].status = TXD_STAT_DD;
 		e1000->transmit_desc_list[i].cmd = TXD_CMD_RS | TXD_CMD_EOP;
 	}
@@ -186,7 +177,7 @@ static inline int desc_init(netcard_t *card)
 	for (i = 0; i < 128; ++i)
 	{
 		memset(&e1000->receive_desc_list[i], 0, sizeof(struct RD));
-		e1000->receive_desc_list[i].addr = V2P(&e1000->rbuf[i]);
+		e1000->receive_desc_list[i].addr = V2P(e1000->rbuf[i]);
 	}
 
 	return 0;
@@ -208,8 +199,9 @@ fail_tbuf:
 			page_free((char *)e1000->tbuf[j]);
 		}
 	}
-	page_free(td_rd);
-fail:
+fail_rd:
+	page_free(td);
+fail_td:
 	return -1;
 }
 
@@ -244,8 +236,6 @@ int e1000_nic_attach(struct pci_func *pcif)
 	{
 		// wait
 	}
-
-//	cprintf("%x", eepromr(card, E1000_EEPROM_ETHERNET_ADDR_2_1));
 
 	if (desc_init(nic))
 	{
@@ -297,9 +287,9 @@ int e1000_net_send(void *state, const void *data, int len)
 
 	memmove(&e1000->tbuf[tail], data, len);
 	next_desc->length = len;
-	next_desc->status &= !TXD_STAT_DD;
+	next_desc->status &= ~TXD_STAT_DD;
 	pciw(e1000, E1000_TDT, (tail + 1) % 32);
-	//cprintf("send : %s\n", addr);
+//	cprintf("send : %s\n", addr);
 	return 0;
 }
 
@@ -313,11 +303,12 @@ int e1000_net_recv(void *state, void *data, int len)
 
 	if ((next_desc->status & RXD_STAT_DD) != RXD_STAT_DD)
 	{
+		cprintf("fail: %x\n", next_desc->status);
 		return -1;
 	}
 
-	//cprintf("tail value :%d\n", tail) ;
-	//cprintf("buflen %d desclen %d\n", len, next_desc->length);
+	cprintf("tail value :%d\n", tail);
+	cprintf("buflen %d desclen %d\n", len, next_desc->length);
 	if (next_desc->length < len)
 	{
 		len = next_desc->length;
