@@ -291,7 +291,8 @@ int e1000_net_send(void *state, const void *data, int len)
 	next_desc->length = len;
 	next_desc->status &= ~TXD_STAT_DD;
 	pciw(e1000, E1000_TDT, (tail + 1) % 32);
-//	cprintf("send : %s\n", addr);
+
+	cprintf("e1000: send %d bytes\n", len);
 	return 0;
 }
 
