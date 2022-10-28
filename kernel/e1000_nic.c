@@ -167,7 +167,7 @@ static inline int desc_init(netcard_t *card)
 	for (i = 0; i < 32; ++i)
 	{
 		memset(&e1000->transmit_desc_list[i], 0, sizeof(struct TD));
-		e1000->transmit_desc_list[i].addr = V2P(e1000->tbuf[i]);
+		e1000->transmit_desc_list[i].addr = V2P(e1000->tbuf[i]->buf);
 		e1000->transmit_desc_list[i].length = PKTSIZE;
 		e1000->transmit_desc_list[i].status = TXD_STAT_DD;
 		e1000->transmit_desc_list[i].cmd = TXD_CMD_RS | TXD_CMD_EOP;
@@ -246,6 +246,8 @@ int e1000_nic_attach(struct pci_func *pcif)
 	transmit_init(nic);
 	receive_init(nic);
 
+	pciw(card, E1000_CTRL, pcir(card, E1000_CTRL) | E1000_CTRL_SLU);
+
 	cprintf("e1000: init done\n");
 
 	return TRUE;
@@ -285,7 +287,7 @@ int e1000_net_send(void *state, const void *data, int len)
 		len = PKTSIZE;
 	}
 
-	memmove(&e1000->tbuf[tail], data, len);
+	memmove(e1000->tbuf[tail]->buf, data, len);
 	next_desc->length = len;
 	next_desc->status &= ~TXD_STAT_DD;
 	pciw(e1000, E1000_TDT, (tail + 1) % 32);
@@ -303,7 +305,7 @@ int e1000_net_recv(void *state, void *data, int len)
 
 	if ((next_desc->status & RXD_STAT_DD) != RXD_STAT_DD)
 	{
-		cprintf("fail: %x\n", next_desc->status);
+//		cprintf("fail: %x\n", next_desc->status);
 		return -1;
 	}
 
@@ -314,7 +316,7 @@ int e1000_net_recv(void *state, void *data, int len)
 		len = next_desc->length;
 	}
 
-	memmove(data, &e1000->rbuf[tail], len);
+	memmove(data, e1000->rbuf[tail]->buf, len);
 	next_desc->status &= !RXD_STAT_DD;
 	pciw(e1000, E1000_RDT, tail);
 	return next_desc->length;

@@ -239,7 +239,7 @@ void netstart(void)
 {
 	if (list_empty(&netcard_list))
 	{
-		cprintf("netstart: no netcard");
+		cprintf("netstart: no netcard\n");
 		return;
 	}
 

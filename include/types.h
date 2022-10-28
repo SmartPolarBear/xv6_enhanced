@@ -26,6 +26,7 @@ typedef uint gfp_t;
 
 #ifdef __KERNEL__
 typedef uint32 size_t;
+typedef int ssize_t;
 typedef uint32 uintptr_t;
 #endif
 
