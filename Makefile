@@ -220,7 +220,8 @@ PORT80	:= $(shell expr $(GDBPORT) + 2)
 
 # net card
 E1000_MACADDR = 52:54:00:12:34:56
-QEMUOPTS += -device e1000,netdev=en0,mac=$(E1000_MACADDR) -object filter-dump,id=f0,netdev=en0,file=en0.pcap
+#QEMUOPTS += -device e1000,netdev=en0,mac=$(E1000_MACADDR) -object filter-dump,id=f0,netdev=en0,file=en0.pcap
+QEMUOPTS += -device virtio-net-pci,netdev=en0 -object filter-dump,id=f0,netdev=en0,file=en0.pcap
 
 # port fowarding
 QEMUOPTS += -netdev type=user,id=en0,hostfwd=tcp::$(PORT80)-:80,hostfwd=tcp::$(PORT7)-:7

@@ -35,7 +35,7 @@ struct pci_driver pci_attach_class[] = {
 // and key2 should be the vendor ID and device ID respectively
 struct pci_driver pci_attach_vendor[] = {
 	{0x8086, 0x100e, &e1000_nic_attach},
-	{0x1af4, 0x0001, &virtio_nic_attach},
+	{0x1af4, 0x1000, &virtio_nic_attach},
 	{0, 0, NULL},
 };
 
