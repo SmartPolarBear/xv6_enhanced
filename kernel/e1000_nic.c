@@ -360,14 +360,14 @@ int e1000_net_recv(void *state, void *data, int len)
 	netdev_t *card = (netdev_t *)state;
 	e1000_t *e1000 = (e1000_t *)card->priv;
 
-	uint32 tail = (pcir(e1000, E1000_RDT) + 1) % E1000_RXD_STAT_DD;
+	uint32 tail = (pcir(e1000, E1000_RDT) + 1) % E1000_RXDESC_LEN;
 	struct RD *next_desc = &e1000->rx_descs[tail];
 
 	if (!(next_desc->status & E1000_RXD_STAT_DD))
 	{
-//		cprintf("fail: %x\n", next_desc->status);
 		return -1;
 	}
+
 	if (next_desc->length < 60)
 	{
 		cprintf("e1000: short packet (%d bytes)\n", next_desc->length);
@@ -386,8 +386,6 @@ int e1000_net_recv(void *state, void *data, int len)
 		return -1;
 	}
 
-//	cprintf("tail value :%d\n", tail);
-//	cprintf("buflen %d desclen %d\n", len, next_desc->length);
 	if (next_desc->length < len)
 	{
 		len = next_desc->length;
