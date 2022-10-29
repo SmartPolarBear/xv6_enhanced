@@ -15,6 +15,8 @@ struct trapframe;
 struct pci_func;
 struct netdev;
 struct netcard_opts;
+struct socket;
+struct sockaddr;
 
 // bio.c
 void binit(void);
@@ -236,3 +238,17 @@ int virtio_nic_attach(struct pci_func *pcif);
 // e1000_nic.c
 void e1000_init(void);
 int e1000_nic_attach(struct pci_func *pcif);
+
+// socket.c
+void socketinit(void);
+struct file *socketalloc(int domain, int type, int protocol);
+void socketclose(struct socket *);
+int socketconnect(struct socket *, struct sockaddr *, int);
+int socketbind(struct socket *, struct sockaddr *, int);
+int socketlisten(struct socket *, int);
+struct file *socketaccept(struct socket *, struct sockaddr *, int *);
+int socketread(struct socket *, char *, int);
+int socketwrite(struct socket *, char *, int);
+int socketrecvfrom(struct socket *, char *, int, struct sockaddr *, int *);
+int socketsendto(struct socket *, char *, int, struct sockaddr *, int);
+int socketioctl(struct socket *, int, void *);

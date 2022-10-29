@@ -21,14 +21,22 @@ typedef unsigned short uint16;
 typedef unsigned int uint32;
 typedef unsigned long long uint64;
 
+typedef char int8;
+typedef short int16;
+typedef int int32;
+typedef long long int64;
+
 typedef uint pde_t;
 typedef uint gfp_t;
 
 #ifdef __KERNEL__
 typedef uint32 size_t;
-typedef int ssize_t;
+typedef int32 ssize_t;
 typedef uint32 uintptr_t;
+typedef int32 time_t;
 #endif
+
+
 
 // Efficient min and max operations
 #define MIN(_a, _b)                        \
