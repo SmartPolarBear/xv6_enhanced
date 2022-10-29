@@ -162,6 +162,11 @@ netadd(int n)
 	}
 	cprintf("\n");
 
+	if (!card->opts->open || card->opts->open(card))
+	{
+		panic("netadd： cannot open device\n");
+	}
+
 	dhcp_start(new);
 	/* wait until DHCP succeeds */
 	while (!dhcp_supplied_address(new))

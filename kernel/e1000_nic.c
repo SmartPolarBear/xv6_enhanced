@@ -15,11 +15,15 @@
 #include "net.h"
 
 int e1000_net_init(void *state, void *hwaddr);
+int e1000_open(void *state);
+int e1000_stop(void *state);
 int e1000_net_send(void *state, const void *data, int len);
 int e1000_net_recv(void *state, void *data, int len);
 
 netcard_opts_t e1000_opts = {
 	.init = e1000_net_init,
+	.open = e1000_open,
+	.stop = e1000_stop,
 	.send = e1000_net_send,
 	.receive = e1000_net_recv,
 };
@@ -137,9 +141,9 @@ e1000_tx_init(struct e1000 *dev)
 	);
 }
 
-static int
-e1000_open(struct netdev *netdev)
+int e1000_open(void *state)
 {
+	netdev_t *netdev = (netdev_t *)state;
 	struct e1000 *dev = (struct e1000 *)netdev->priv;
 	// enable interrupts
 	pciw(dev, E1000_IMS, E1000_IMS_RXT0);
@@ -154,9 +158,9 @@ e1000_open(struct netdev *netdev)
 	return 0;
 }
 
-static int
-e1000_stop(struct netdev *netdev)
+int e1000_stop(void *state)
 {
+	netdev_t *netdev = (netdev_t *)state;
 	struct e1000 *dev = (struct e1000 *)netdev->priv;
 	// disable interrupts
 	pciw(dev, E1000_IMC, E1000_IMS_RXT0);
@@ -317,8 +321,6 @@ int e1000_net_init(void *state, void *hwaddr)
 	netdev_t *card = (netdev_t *)state;
 	e1000_t *e1000 = (e1000_t *)card->priv;
 	memmove(hwaddr, e1000->addr, 6);
-
-	e1000_open(card);
 
 	return 0;
 }

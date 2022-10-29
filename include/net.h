@@ -20,6 +20,8 @@
 typedef struct netcard_opts
 {
 	int (*init)(void *, void *);
+	int (*open)(void *);
+	int (*stop)(void *);
 	int (*send)(void *, const void *, int);
 	int (*receive)(void *, void *, int);
 } netcard_opts_t;
