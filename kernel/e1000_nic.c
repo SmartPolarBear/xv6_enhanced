@@ -373,11 +373,11 @@ int e1000_net_recv(void *state, void *data, int len)
 		cprintf("e1000: short packet (%d bytes)\n", next_desc->length);
 		return -1;
 	}
+
 	if (!(next_desc->status & E1000_RXD_STAT_EOP))
 	{
 		cprintf("e1000: not EOP! this driver does not support packet that do not fit in one buffer\n");
 		return -1;
-
 	}
 
 	if (next_desc->errors)
