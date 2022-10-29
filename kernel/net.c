@@ -253,18 +253,5 @@ void netstart(void)
 	netif_set_default(&netif[0]);
 }
 
-uint32
-sys_now(void)
-{
-	rtcdate_t date;
-	cmostime(&date);
-	int ret = unixime_in_seconds(&date) * 1000;
-	return ret;
-}
 
-// for random number. TODO: use better random number generator
-unsigned long
-r_mtime(void)
-{
-	return sys_now();
-}
+

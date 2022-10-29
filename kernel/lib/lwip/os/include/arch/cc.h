@@ -18,9 +18,9 @@
 typedef signed int ssize_t;
 
 /* horrible rand */
-#define LWIP_RAND r_mtime
+#define LWIP_RAND lwip_rand
 
 void printf(char *, ...);
 void panic(char *) __attribute__((noreturn));
-unsigned long r_mtime(void);
+unsigned long lwip_rand(void);
 
