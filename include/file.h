@@ -10,7 +10,7 @@ typedef enum file_type
 	FD_SOCKET,
 } file_type_t;
 
-struct file
+typedef struct file
 {
 	file_type_t type;
 	int ref; // reference count
@@ -24,7 +24,7 @@ struct file
 		struct socket *socket;
 	};
 	uint off;
-};
+}file_t;
 
 // in-memory copy of an inode
 struct inode

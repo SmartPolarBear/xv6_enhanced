@@ -6,11 +6,11 @@
 #include "sockio.h"
 #include "lwip/ip_addr.h"
 
-struct socket {
+typedef struct socket
+{
 	int type;
 	int desc;
-};
-
+} socket_t;
 
 #define PF_UNSPEC   0
 #define PF_LOCAL    1
@@ -28,34 +28,38 @@ struct socket {
 
 #define INADDR_ANY ((ip_addr_t)0)
 
-struct sockaddr {
+typedef struct sockaddr
+{
 	uint16 sa_family;
 	uint8 sa_data[14];
-};
+} sockaddr_t;
 
-struct sockaddr_in {
+typedef struct sockaddr_in
+{
 	uint16 sin_family;
 	uint16 sin_port;
 	ip_addr_t sin_addr;
-};
+} sockaddr_in_t;
 
 #define IFNAMSIZ 16
 
-struct ifreq {
+typedef struct ifreq
+{
 	char ifr_name[IFNAMSIZ]; /* Interface name */
-	union {
+	union
+	{
 		struct sockaddr ifr_addr;
 		struct sockaddr ifr_dstaddr;
 		struct sockaddr ifr_broadaddr;
 		struct sockaddr ifr_netmask;
 		struct sockaddr ifr_hwaddr;
-		short           ifr_flags;
-		int             ifr_ifindex;
-		int             ifr_metric;
-		int             ifr_mtu;
+		short ifr_flags;
+		int ifr_ifindex;
+		int ifr_metric;
+		int ifr_mtu;
 //      struct ifmap    ifr_map;
-		char            ifr_slave[IFNAMSIZ];
-		char            ifr_newname[IFNAMSIZ];
-		char           *ifr_data;
+		char ifr_slave[IFNAMSIZ];
+		char ifr_newname[IFNAMSIZ];
+		char *ifr_data;
 	};
-};
+} ifreq_t;
