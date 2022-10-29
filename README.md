@@ -2,7 +2,10 @@
 
 ## Introduction
 
+A enhanced xv6 with some new features like a lwIP-based network stack. 
+
 ## Original README
+[See original README file here.](https://github.com/SmartPolarBear/xv6_enhanced/blob/main/README)  
 
 >
 >NOTE: we have stopped maintaining the x86 version of xv6, and switched
