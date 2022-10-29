@@ -112,6 +112,7 @@ add_executable(kernel
         syscall.c
         sysfile.c
         sysproc.c
+        socket.c
         trap.c
         uart.c
         vfs.c
