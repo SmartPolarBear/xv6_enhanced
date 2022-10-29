@@ -147,11 +147,12 @@ target_compile_options(kernel BEFORE
         PRIVATE -static
         PRIVATE -fno-builtin
         PRIVATE -fno-strict-aliasing
-        PRIVATE -O2
+        PRIVATE -O0
         PRIVATE -Wall
         PRIVATE -MD
         PRIVATE -ggdb
         PRIVATE -m32
+        PRIVATE -g
         PRIVATE -fno-stack-protector
         PRIVATE -fno-omit-frame-pointer)
 

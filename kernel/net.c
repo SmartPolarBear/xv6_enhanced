@@ -26,14 +26,14 @@ size_t netcard_count = 0;
 kmem_cache_t *netcard_cache = NULL;
 spinlock_t netcard_list_lock;
 
-netcard_t *find_card_by_id(int n)
+netdev_t *find_card_by_id(int n)
 {
 	list_head_t *pos;
 	acquire(&netcard_list_lock);
 
 	list_for_each(pos, &netcard_list)
 	{
-		netcard_t *card = list_entry(pos, netcard_t, link);
+		netdev_t *card = list_entry(pos, netdev_t, link);
 		if (card->id == n)
 		{
 			release(&netcard_list_lock);
@@ -48,7 +48,7 @@ netcard_t *find_card_by_id(int n)
 err_t
 linkoutput(struct netif *netif, struct pbuf *p)
 {
-	netcard_t *card = netif->state;
+	netdev_t *card = netif->state;
 	struct pbuf *q;
 
 	if (!card->opts->send)
@@ -79,7 +79,7 @@ linkinput(struct netif *netif)
 		return 0;
 	}
 
-	netcard_t *card = netif->state;
+	netdev_t *card = netif->state;
 	if (!card->opts->receive)
 	{
 		return 0;
@@ -107,7 +107,7 @@ linkinput(struct netif *netif)
 err_t
 linkinit(struct netif *netif)
 {
-	netcard_t *card = netif->state;
+	netdev_t *card = netif->state;
 
 	if (!card->opts->init)
 	{
@@ -132,7 +132,7 @@ void
 netadd(int n)
 {
 	struct netif *new = &netif[n];
-	netcard_t *card = find_card_by_id(n);
+	netdev_t *card = find_card_by_id(n);
 
 	int i;
 	char addr[IPADDR_STRLEN_MAX], netmask[IPADDR_STRLEN_MAX], gw[IPADDR_STRLEN_MAX];
@@ -189,7 +189,7 @@ netinit(void)
 	list_init(&netcard_list);
 	initlock(&netcard_list_lock, "netcard_list");
 
-	netcard_cache = kmem_cache_create("netcard_cache", sizeof(struct netcard), 0);
+	netcard_cache = kmem_cache_create("netcard_cache", sizeof(struct netdev), 0);
 	if (!netcard_cache)
 	{
 		panic("netinit: kmem_cache_create");
@@ -197,20 +197,20 @@ netinit(void)
 
 }
 
-netcard_t *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt)
+netdev_t *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt)
 {
-	struct netcard *card = kmem_cache_alloc(netcard_cache);
+	struct netdev *card = kmem_cache_alloc(netcard_cache);
 	if (!card)
 	{
 		panic("nic_register: kmem_cache_alloc");
 	}
 
-	memset(card, 0, sizeof(struct netcard));
+	memset(card, 0, sizeof(struct netdev));
 	strncpy(card->name, name, sizeof(card->name));
 
 	card->func = pcif;
 	card->opts = opts;
-	card->prvt = prvt;
+	card->priv = prvt;
 	card->id = netcard_count++;
 
 	acquire(&netcard_list_lock);
@@ -221,7 +221,7 @@ netcard_t *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *
 	return card;
 }
 
-struct netcard *nic_unregister(struct netcard *nic)
+struct netdev *nic_unregister(struct netdev *nic)
 {
 	acquire(&netcard_list_lock);
 	list_del(&nic->link);
@@ -230,7 +230,7 @@ struct netcard *nic_unregister(struct netcard *nic)
 	return nic;
 }
 
-void nic_free(struct netcard *nic)
+void nic_free(struct netdev *nic)
 {
 	kmem_cache_free(netcard_cache, nic);
 }
@@ -239,7 +239,7 @@ void netstart(void)
 {
 	if (list_empty(&netcard_list))
 	{
-		cprintf("netstart: no netcard\n");
+		cprintf("netstart: no netdev\n");
 		return;
 	}
 

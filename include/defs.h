@@ -13,7 +13,7 @@ struct stat;
 struct superblock;
 struct trapframe;
 struct pci_func;
-struct netcard;
+struct netdev;
 struct netcard_opts;
 
 // bio.c
@@ -226,9 +226,9 @@ void pci_func_enable(struct pci_func *f);
 void netinit(void);
 void netstart(void);
 int nettimer(void);
-struct netcard *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt);
-struct netcard *nic_unregister(struct netcard *nic);
-void nic_free(struct netcard *nic);
+struct netdev *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt);
+struct netdev *nic_unregister(struct netdev *nic);
+void nic_free(struct netdev *nic);
 
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);

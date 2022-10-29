@@ -7,7 +7,7 @@
 #include "defs.h"
 #include "mmu.h"
 #include "slab.h"
-#include "x86.h"
+#include "mp.h"
 #include "memlayout.h"
 
 #include "pci.h"
@@ -26,14 +26,18 @@ netcard_opts_t e1000_opts = {
 
 typedef struct e1000
 {
-	struct TD *transmit_desc_list; // 32
-	struct RD *receive_desc_list; // 128
+	struct TD tx_descs[E1000_TXDESC_LEN]__attribute__((aligned(16)));;
+	struct RD rx_descs[E1000_RXDESC_LEN]__attribute__((aligned(16)));;
 
-	struct packet *tbuf[32];
-	struct packet *rbuf[128];
+	struct packet *tbuf[E1000_TXDESC_LEN];
+	struct packet *rbuf[E1000_RXDESC_LEN];
 
 	volatile uint32 *mmio_base;
 	size_t mmio_size;
+
+	uint8 addr[6];
+	uint32 irq;
+
 } e1000_t;
 
 kmem_cache_t *e1000_cache = NULL;
@@ -41,14 +45,130 @@ size_t e1000_count = 0;
 
 static void pciw(e1000_t *card, int index, uint32 value)
 {
-	card->mmio_base[index] = value;
-	card->mmio_base[index];
+	card->mmio_base[index / 4] = value;
+	card->mmio_base[index / 4];
 }
 
 static uint32 pcir(e1000_t *card, int index)
 {
-	card->mmio_base[index];
-	return card->mmio_base[index];
+	card->mmio_base[index / 4];
+	return card->mmio_base[index / 4];
+}
+
+static uint16
+e1000_eeprom_read(struct e1000 *dev, uint8 addr)
+{
+	uint32 eerd;
+	pciw(dev, E1000_EERD, E1000_EERD_READ | addr << E1000_EERD_ADDR);
+	while (!((eerd = pcir(dev, E1000_EERD)) & E1000_EERD_DONE))
+		microdelay(1);
+	return (uint16)(eerd >> E1000_EERD_DATA);
+}
+
+static void
+e1000_read_addr_from_eeprom(struct e1000 *dev, uint8 *dst)
+{
+	uint16 data;
+	for (int n = 0; n < 3; n++)
+	{
+		data = e1000_eeprom_read(dev, n);
+		dst[n * 2 + 0] = (data & 0xff);
+		dst[n * 2 + 1] = (data >> 8) & 0xff;
+	}
+}
+static uintptr_t
+e1000_resolve_mmio_base(struct pci_func *pcif)
+{
+	uint32 mmio_base = 0;
+	for (int n = 0; n < 6; n++)
+	{
+		if (pcif->reg_base[n] > 0xffff)
+		{
+			KDEBUG_ASSERT(pcif->reg_size[n] == (1 << 17));
+			mmio_base = pcif->reg_base[n];
+			break;
+		}
+	}
+	return mmio_base;
+}
+
+static void
+e1000_rx_init(struct e1000 *dev)
+{
+	// setup rx descriptors
+	uint64 base = (uint64)(V2P(dev->rx_descs));
+	pciw(dev, E1000_RDBAL, (uint32)(base & 0xffffffff));
+	pciw(dev, E1000_RDBAH, (uint32)(base >> 32));
+	// rx descriptor lengh
+	pciw(dev, E1000_RDLEN, (uint32)(E1000_RXDESC_LEN * sizeof(struct RD)));
+	// setup head/tail
+	pciw(dev, E1000_RDH, 0);
+	pciw(dev, E1000_RDT, E1000_RXDESC_LEN - 1);
+	// set tx control register
+	pciw(dev, E1000_RCTL, (
+		E1000_RCTL_SBP | /* store bad packet */
+			E1000_RCTL_UPE | /* unicast promiscuous enable */
+			E1000_RCTL_MPE | /* multicast promiscuous enab */
+			E1000_RCTL_RDMTS_HALF | /* rx desc min threshold size */
+			E1000_RCTL_SECRC | /* Strip Ethernet CRC */
+			E1000_RCTL_LPE | /* long packet enable */
+			E1000_RCTL_BAM | /* broadcast enable */
+			E1000_RCTL_SZ_2048 | /* rx buffer size 2048 */
+			0)
+	);
+}
+
+static void
+e1000_tx_init(struct e1000 *dev)
+{
+	// setup tx descriptors
+	uint64 base = (uint64)(V2P(dev->tx_descs));
+	pciw(dev, E1000_TDBAL, (uint32)(base & 0xffffffff));
+	pciw(dev, E1000_TDBAH, (uint32)(base >> 32));
+	// tx descriptor length
+	pciw(dev, E1000_TDLEN, (uint32)(E1000_TXDESC_LEN * sizeof(struct TD)));
+	// setup head/tail
+	pciw(dev, E1000_TDH, 0);
+	pciw(dev, E1000_TDT, 0);
+	// set tx control register
+	pciw(dev, E1000_TCTL, (
+		E1000_TCTL_PSP | /* pad short packets */
+			0)
+	);
+}
+
+static int
+e1000_open(struct netdev *netdev)
+{
+	struct e1000 *dev = (struct e1000 *)netdev->priv;
+	// enable interrupts
+	pciw(dev, E1000_IMS, E1000_IMS_RXT0);
+	// clear existing pending interrupts
+	pcir(dev, E1000_ICR);
+	// enable RX/TX
+	pciw(dev, E1000_RCTL, pcir(dev, E1000_RCTL) | E1000_RCTL_EN);
+	pciw(dev, E1000_TCTL, pcir(dev, E1000_TCTL) | E1000_TCTL_EN);
+	// link up
+	pciw(dev, E1000_CTL, pcir(dev, E1000_CTL) | E1000_CTL_SLU);
+	netdev->flags |= NETDEV_FLAG_UP;
+	return 0;
+}
+
+static int
+e1000_stop(struct netdev *netdev)
+{
+	struct e1000 *dev = (struct e1000 *)netdev->priv;
+	// disable interrupts
+	pciw(dev, E1000_IMC, E1000_IMS_RXT0);
+	// clear existing pending interrupts
+	pcir(dev, E1000_ICR);
+	// disable RX/TX
+	pciw(dev, E1000_RCTL, pcir(dev, E1000_RCTL) & ~E1000_RCTL_EN);
+	pciw(dev, E1000_TCTL, pcir(dev, E1000_TCTL) & ~E1000_TCTL_EN);
+	// link down
+	pciw(dev, E1000_CTL, pcir(dev, E1000_CTL) & ~E1000_CTL_SLU);
+	netdev->flags &= ~NETDEV_FLAG_UP;
+	return 0;
 }
 
 void e1000_init(void)
@@ -60,80 +180,13 @@ void e1000_init(void)
 	}
 }
 
-static inline void transmit_init(netcard_t *card)
+static inline int desc_init(netdev_t *card)
 {
-	e1000_t *e1000 = (e1000_t *)card->prvt;
-
-	//TD Base Address register
-	pciw(e1000, E1000_TDBAL, V2P(e1000->transmit_desc_list));
-	pciw(e1000, E1000_TDBAH, 0);
-
-	//TD Descriptor Length register
-	pciw(e1000, E1000_TDLEN, 32 * sizeof(struct TD));
-
-	//TD head and tail register
-	pciw(e1000, E1000_TDH, 0x0);
-	pciw(e1000, E1000_TDT, 0x0);
-
-	//TD control register
-	pciw(e1000, E1000_TCTL, TCTL_EN | TCTL_PSP | (TCTL_CT & (0x10 << 4)) | (TCTL_COLD & (0x40 << 12)));
-
-	//Transmit Inter Packets Gap register
-	pciw(e1000, E1000_TIPG, 10 | (8 << 10) | (12 << 20));
-}
-
-static inline void receive_init(netcard_t *card)
-{
-	e1000_t *e1000 = (e1000_t *)card->prvt;
-
-	// MAC: 52:54:00:12:34:56
-	pciw(e1000, E1000_RA, 0x12005452);
-	pciw(e1000, E1000_RA + 1, 0x5634 | E1000_RAV);
-
-	//Multicast Table Array
-	for (int i = 0; i < 128; i++)
-		pciw(e1000, E1000_MTA + i, 0);
-
-	pciw(e1000, E1000_IMS, 0);
-
-	//Base Address register
-	pciw(e1000, E1000_RDBAL, V2P(e1000->receive_desc_list));
-	pciw(e1000, E1000_RDBAH, 0);
-
-	// Descriptor Length
-	pciw(e1000, E1000_RDLEN, sizeof(struct RD) * 128);
-
-	// head and tail register
-	pciw(e1000, E1000_RDH, 0);
-	pciw(e1000, E1000_RDT, 128 - 1);
-
-	pciw(e1000, E1000_RCTL, RCTL_EN | RCTL_SECRC | RCTL_BAM);
-}
-
-static inline int desc_init(netcard_t *card)
-{
-	e1000_t *e1000 = (e1000_t *)card->prvt;
-	// TD=384, RD=1536, 1 packet =2048
-
-	// TD and RD use a page separately.
-	char *td = page_alloc();
-	if (!td)
-	{
-		goto fail_td;
-	}
-	memset(td, 0, PGSIZE);
-	e1000->transmit_desc_list = (struct TD *)td;
-
-	char *rd = page_alloc();
-	if (!rd)
-	{
-		goto fail_rd;
-	}
-	e1000->receive_desc_list = (struct RD *)rd;
+	e1000_t *e1000 = (e1000_t *)card->priv;
 
 	// two packet per page
 	int i = 0;
-	for (i = 0; i < 32; i += 2)
+	for (i = 0; i < E1000_TXDESC_LEN; i += 2)
 	{
 		char *p = page_alloc();
 		if (!p)
@@ -148,7 +201,7 @@ static inline int desc_init(netcard_t *card)
 	}
 
 	i = 0;
-	for (i = 0; i < 128; i += 2)
+	for (i = 0; i < E1000_RXDESC_LEN; i += 2)
 	{
 		char *p = page_alloc();
 		if (!p)
@@ -162,22 +215,19 @@ static inline int desc_init(netcard_t *card)
 		e1000->rbuf[i + 1] = (struct packet *)(p + PKTSIZE);
 	}
 
-	// setup descs
 	// send
-	for (i = 0; i < 32; ++i)
+	for (i = 0; i < E1000_TXDESC_LEN; ++i)
 	{
-		memset(&e1000->transmit_desc_list[i], 0, sizeof(struct TD));
-		e1000->transmit_desc_list[i].addr = V2P(e1000->tbuf[i]->buf);
-		e1000->transmit_desc_list[i].length = PKTSIZE;
-		e1000->transmit_desc_list[i].status = TXD_STAT_DD;
-		e1000->transmit_desc_list[i].cmd = TXD_CMD_RS | TXD_CMD_EOP;
+		e1000->tx_descs[i].addr = V2P(e1000->tbuf[i]->buf);
+		e1000->tx_descs[i].length = PKTSIZE;
+		e1000->tx_descs[i].status = E1000_TXD_STAT_DD;
+		e1000->tx_descs[i].cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
 	}
 
 	// receive
-	for (i = 0; i < 128; ++i)
+	for (i = 0; i < E1000_RXDESC_LEN; ++i)
 	{
-		memset(&e1000->receive_desc_list[i], 0, sizeof(struct RD));
-		e1000->receive_desc_list[i].addr = V2P(e1000->rbuf[i]);
+		e1000->rx_descs[i].addr = V2P(e1000->rbuf[i]->buf);
 	}
 
 	return 0;
@@ -190,7 +240,7 @@ fail_rbuf:
 			page_free((char *)e1000->rbuf[j]);
 		}
 	}
-	i = 32;
+	i = E1000_TXDESC_LEN;
 fail_tbuf:
 	for (int j = 0; j < i; j += 2)
 	{
@@ -199,9 +249,7 @@ fail_tbuf:
 			page_free((char *)e1000->tbuf[j]);
 		}
 	}
-fail_rd:
-	page_free(td);
-fail_td:
+
 	return -1;
 }
 
@@ -210,32 +258,16 @@ int e1000_nic_attach(struct pci_func *pcif)
 	// Enable PCI function
 	pci_func_enable(pcif);
 
-	// Map MMIO region
-	uint32 mmio_base = pcif->reg_base[0];
-	uint32 mmio_size = pcif->reg_size[0];
-
-	cprintf("e1000: base: 0x%x size: 0x%x status reg: %x\n", mmio_base, mmio_size, *(((uint32 *)mmio_base) + 2));
-
 	// Allocate card
 	e1000_t *card = (e1000_t *)kmem_cache_alloc(e1000_cache);
 	memset(card, 0, sizeof(e1000_t));
-
-	card->mmio_base = (uint32 *)mmio_base;
-	card->mmio_size = mmio_size;
 
 	uint32 id = e1000_count++;
 
 	char name[8] = "e1000_";
 	name[6] = '0' + id;
 
-	netcard_t *nic = nic_register(name, pcif, &e1000_opts, card);
-
-	// Reset the card
-	pciw(card, E1000_CTRL, E1000_CTRL_RST);
-	while (pcir(card, E1000_CTRL) & E1000_CTRL_RST)
-	{
-		// wait
-	}
+	netdev_t *nic = nic_register(name, pcif, &e1000_opts, card);
 
 	if (desc_init(nic))
 	{
@@ -243,10 +275,31 @@ int e1000_nic_attach(struct pci_func *pcif)
 		goto cleanup;
 	}
 
-	transmit_init(nic);
-	receive_init(nic);
+	card->mmio_base = (volatile uint32 *)e1000_resolve_mmio_base(pcif);
+	cprintf("e1000: base: 0x%x status reg: %x\n", card->mmio_base, pcir(card, E1000_STATUS));
 
-	pciw(card, E1000_CTRL, pcir(card, E1000_CTRL) | E1000_CTRL_SLU);
+	// Read HW address from EEPROM
+	e1000_read_addr_from_eeprom(card, card->addr);
+	cprintf("e1000: macaddr: %x:%x:%x:%x:%x:%x\n",
+			card->addr[0],
+			card->addr[1],
+			card->addr[2],
+			card->addr[3],
+			card->addr[4],
+			card->addr[5]);
+	// Register I/O APIC
+	card->irq = pcif->irq_line;
+	ioapicenable(card->irq, ncpu - 1);
+
+	// Initialize Multicast Table Array
+	for (int n = 0; n < 128; n++)
+		pciw(card, E1000_MTA + (n << 2), 0);
+	// Initialize RX/TX
+	e1000_rx_init(card);
+	e1000_tx_init(card);
+
+	// Alloc netdev
+	nic->flags |= NETDEV_FLAG_RUNNING;
 
 	cprintf("e1000: init done\n");
 
@@ -261,27 +314,27 @@ cleanup:
 
 int e1000_net_init(void *state, void *hwaddr)
 {
-	netcard_t *card = (netcard_t *)state;
-	e1000_t *e1000 = (e1000_t *)card->prvt;
+	netdev_t *card = (netdev_t *)state;
+	e1000_t *e1000 = (e1000_t *)card->priv;
+	memmove(hwaddr, e1000->addr, 6);
 
-	//Read Hardware(MAC) address from the device
-	*((uint32 *)hwaddr) = pcir(e1000, E1000_RA);
-	*((uint16 *)hwaddr + 2) = pcir(e1000, E1000_RA + 1);
+	e1000_open(card);
 
 	return 0;
 }
 
 int e1000_net_send(void *state, const void *data, int len)
 {
-	netcard_t *card = (netcard_t *)state;
-	e1000_t *e1000 = (e1000_t *)card->prvt;
+	netdev_t *card = (netdev_t *)state;
+	e1000_t *e1000 = (e1000_t *)card->priv;
 	uint32 tail = pcir(e1000, E1000_TDT);
-	struct TD *next_desc = &e1000->transmit_desc_list[tail];
+	struct TD *next_desc = &e1000->tx_descs[tail];
 
-	if ((next_desc->status & TXD_STAT_DD) != TXD_STAT_DD)
+	if (!(next_desc->status & E1000_TXD_STAT_DD) && (next_desc->cmd & E1000_TXD_CMD_RS))
 	{
 		return -1;
 	}
+
 	if (len > PKTSIZE)
 	{
 		len = PKTSIZE;
@@ -289,36 +342,57 @@ int e1000_net_send(void *state, const void *data, int len)
 
 	memmove(e1000->tbuf[tail]->buf, data, len);
 	next_desc->length = len;
-	next_desc->status &= ~TXD_STAT_DD;
-	pciw(e1000, E1000_TDT, (tail + 1) % 32);
+	next_desc->status = 0;
+	next_desc->cmd = (E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP);
 
-	cprintf("e1000: send %d bytes\n", len);
-	return 0;
+	pciw(e1000, E1000_TDT, (tail + 1) % E1000_TXDESC_LEN);
+	while (!(next_desc->status & 0x0f))
+	{
+		microdelay(1);
+	}
+	return len;
 }
 
 int e1000_net_recv(void *state, void *data, int len)
 {
-	netcard_t *card = (netcard_t *)state;
-	e1000_t *e1000 = (e1000_t *)card->prvt;
+	netdev_t *card = (netdev_t *)state;
+	e1000_t *e1000 = (e1000_t *)card->priv;
 
-	uint32 tail = (pcir(e1000, E1000_RDT) + 1) % 128;
-	struct RD *next_desc = &e1000->receive_desc_list[tail];
+	uint32 tail = (pcir(e1000, E1000_RDT) + 1) % E1000_RXD_STAT_DD;
+	struct RD *next_desc = &e1000->rx_descs[tail];
 
-	if ((next_desc->status & RXD_STAT_DD) != RXD_STAT_DD)
+	if (!(next_desc->status & E1000_RXD_STAT_DD))
 	{
 //		cprintf("fail: %x\n", next_desc->status);
 		return -1;
 	}
+	if (next_desc->length < 60)
+	{
+		cprintf("e1000: short packet (%d bytes)\n", next_desc->length);
+		return -1;
+	}
+	if (!(next_desc->status & E1000_RXD_STAT_EOP))
+	{
+		cprintf("e1000: not EOP! this driver does not support packet that do not fit in one buffer\n");
+		return -1;
 
-	cprintf("tail value :%d\n", tail);
-	cprintf("buflen %d desclen %d\n", len, next_desc->length);
+	}
+
+	if (next_desc->errors)
+	{
+		cprintf("e1000: rx errors (0x%x)\n", next_desc->errors);
+		return -1;
+	}
+
+//	cprintf("tail value :%d\n", tail);
+//	cprintf("buflen %d desclen %d\n", len, next_desc->length);
 	if (next_desc->length < len)
 	{
 		len = next_desc->length;
 	}
 
 	memmove(data, e1000->rbuf[tail]->buf, len);
-	next_desc->status &= !RXD_STAT_DD;
+	next_desc->status = 0;
 	pciw(e1000, E1000_RDT, tail);
 	return next_desc->length;
 }
