@@ -34,6 +34,7 @@ typedef uint32 size_t;
 typedef int32 ssize_t;
 typedef uint32 uintptr_t;
 typedef int32 time_t;
+typedef uint pid_t;
 #endif
 
 

@@ -12,3 +12,13 @@ extern void panic(char *) __attribute__((noreturn));
             panic("kernel assertion failed: " #cond); \
         } \
     } while (0)
+
+#define KDEBUG_MSG_ASSERT(cond, msg) \
+    do { \
+        if (!(cond)) { \
+            panic("kernel assertion failed: " #cond msg); \
+        } \
+    } while (0)
+
+#define KDEBUG_UNREACHABLE  \
+    KDEBUG_MSG_ASSERT(FALSE, "Unreachable")

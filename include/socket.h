@@ -6,10 +6,18 @@
 #include "sockio.h"
 #include "lwip/ip_addr.h"
 
+#define SOCKET_NBACKLOG 5
+
 typedef struct socket
 {
+	void *pcb;
+	pid_t pid;
+	struct pbuf *recv_buf;
+	int recv_offset;
+	int recv_closed;
+	struct socket *backlog[SOCKET_NBACKLOG];
+	int protocol;
 	int type;
-	int desc;
 } socket_t;
 
 #define PF_UNSPEC   0
@@ -24,7 +32,7 @@ typedef struct socket
 #define SOCK_DGRAM  2
 
 #define IPPROTO_TCP 0
-#define IPPROTO_UDP 0
+#define IPPROTO_UDP 1
 
 #define INADDR_ANY ((ip_addr_t)0)
 

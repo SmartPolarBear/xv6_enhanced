@@ -241,12 +241,12 @@ int e1000_nic_attach(struct pci_func *pcif);
 
 // socket.c
 void socketinit(void);
-struct file *socketalloc(int domain, int type, int protocol);
+struct file *socketalloc(int domain, int type, int protocol, int *err);
 void socketclose(struct socket *);
 int socketconnect(struct socket *, struct sockaddr *, int);
 int socketbind(struct socket *, struct sockaddr *, int);
 int socketlisten(struct socket *, int);
-struct file *socketaccept(struct socket *, struct sockaddr *, int *);
+struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrlen, int *err);
 int socketread(struct socket *, char *, int);
 int socketwrite(struct socket *, char *, int);
 int socketrecvfrom(struct socket *, char *, int, struct sockaddr *, int *);
