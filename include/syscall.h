@@ -27,3 +27,14 @@
 #define SYS_signal 24
 #define SYS_fgproc 25
 #define SYS_alarm 26
+
+#define SYS_ioctl    27
+#define SYS_socket   28
+#define SYS_connect  29
+#define SYS_bind     30
+#define SYS_listen   31
+#define SYS_accept   32
+#define SYS_recv     33
+#define SYS_send     34
+#define SYS_recvfrom 35
+#define SYS_sendto   36

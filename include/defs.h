@@ -175,6 +175,10 @@ int fetchint(uint, int *);
 int fetchstr(uint, char **);
 void syscall(void);
 
+// sysfile.c
+int argfd(int, int *, struct file **);
+int fdalloc(struct file *);
+
 // timer.c
 void timerinit(void);
 
@@ -247,8 +251,6 @@ int socketconnect(struct socket *, struct sockaddr *, int);
 int socketbind(struct socket *, struct sockaddr *, int);
 int socketlisten(struct socket *, int);
 struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrlen, int *err);
-int socketread(struct socket *, char *, int);
-int socketwrite(struct socket *, char *, int);
-int socketrecvfrom(struct socket *, char *, int, struct sockaddr *, int *);
-int socketsendto(struct socket *, char *, int, struct sockaddr *, int);
+int socketrecv(struct socket *skt, char *buf, int len, int flags);
+int socketsend(struct socket *skt, char *buf, int len, int flags);
 int socketioctl(struct socket *, int, void *);

@@ -95,32 +95,46 @@ argstr(int n, char **pp)
 	return fetchstr(addr, pp);
 }
 
-extern int sys_chdir(void);
-extern int sys_close(void);
-extern int sys_dup(void);
-extern int sys_exec(void);
 extern int sys_exit(void);
 extern int sys_fork(void);
-extern int sys_fstat(void);
 extern int sys_getpid(void);
 extern int sys_kill(void);
-extern int sys_link(void);
-extern int sys_mkdir(void);
-extern int sys_mknod(void);
-extern int sys_open(void);
-extern int sys_pipe(void);
-extern int sys_read(void);
 extern int sys_sbrk(void);
 extern int sys_sleep(void);
-extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_waitpid(void);
-extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_sigreturn(void);
 extern int sys_signal(void);
 extern int sys_fgproc(void);
 extern int sys_alarm(void);
+
+// sysfile.c
+extern int sys_chdir(void);
+extern int sys_close(void);
+extern int sys_dup(void);
+extern int sys_exec(void);
+extern int sys_fstat(void);
+extern int sys_mkdir(void);
+extern int sys_mknod(void);
+extern int sys_open(void);
+extern int sys_pipe(void);
+extern int sys_read(void);
+extern int sys_ioctl(void);
+extern int sys_link(void);
+extern int sys_unlink(void);
+extern int sys_write(void);
+
+// syssocket.c
+extern int sys_socket(void);
+extern int sys_connect(void);
+extern int sys_bind(void);
+extern int sys_listen(void);
+extern int sys_accept(void);
+extern int sys_recv(void);
+extern int sys_send(void);
+extern int sys_recvfrom(void);
+extern int sys_sendto(void);
 
 static int (*syscalls[])(void) = {
 	[SYS_fork]    = sys_fork,
@@ -148,7 +162,18 @@ static int (*syscalls[])(void) = {
 	[SYS_sigreturn]=sys_sigreturn,
 	[SYS_signal]  =sys_signal,
 	[SYS_fgproc] = sys_fgproc,
-	[SYS_alarm]=sys_alarm
+	[SYS_alarm]=sys_alarm,
+
+	[SYS_ioctl]    sys_ioctl,
+	[SYS_socket]   sys_socket,
+	[SYS_connect]  sys_connect,
+	[SYS_bind]     sys_bind,
+	[SYS_listen]   sys_listen,
+	[SYS_accept]   sys_accept,
+	[SYS_recv]     sys_recv,
+	[SYS_send]     sys_send,
+	[SYS_recvfrom] sys_recvfrom,
+	[SYS_sendto]   sys_sendto,
 };
 
 void
