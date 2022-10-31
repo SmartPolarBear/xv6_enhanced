@@ -4,10 +4,20 @@
 #pragma once
 
 #include "sockio.h"
-#include "lwip/ip_addr.h"
 #include "spinlock.h"
 
 #define SOCKET_NBACKLOG 8
+
+#ifdef __KERNEL__
+#include "lwip/ip_addr.h"
+#else
+typedef struct ip4_addr
+{
+	uint32_t addr;
+} ip4_addr_t;
+
+typedef ip4_addr_t ip_addr_t;
+#endif
 
 typedef struct socket
 {
@@ -37,7 +47,7 @@ typedef struct socket
 #define IPPROTO_TCP 0
 #define IPPROTO_UDP 1
 
-#define INADDR_ANY ((ip_addr_t)0)
+#define INADDR_ANY 0
 
 typedef struct sockaddr
 {
