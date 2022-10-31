@@ -110,9 +110,10 @@ add_executable(kernel
         string.c
         slab.c
         syscall.c
+        socket.c
         sysfile.c
         sysproc.c
-        socket.c
+        syssocket.c
         trap.c
         uart.c
         vfs.c

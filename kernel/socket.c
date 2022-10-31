@@ -22,7 +22,7 @@ kmem_cache_t *socket_cache;
 
 void socketinit(void)
 {
-	socket_cache = kmem_cache_create("socket_cache", sizeof(struct socket), 0);
+	socket_cache = kmem_cache_create("socket_cache", sizeof(socket_t), 0);
 	if (socket_cache == NULL)
 	{
 		panic("socketinit: socket_cache");
@@ -85,7 +85,7 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 	return file;
 }
 
-void socketclose(struct socket *skt)
+void socketclose(socket_t *skt)
 {
 	if (skt->recv_buf)
 	{
@@ -119,7 +119,7 @@ void socketclose(struct socket *skt)
 	kmem_cache_free(socket_cache, skt);
 }
 
-int socketconnect(struct socket *skt, struct sockaddr *addr, int addr_len)
+int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 {
 	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
 	if (skt->protocol != IPPROTO_TCP)
@@ -131,12 +131,14 @@ int socketconnect(struct socket *skt, struct sockaddr *addr, int addr_len)
 	err_t e = tcp_connect(pcb, &addr_in->sin_addr, addr_in->sin_port, NULL);
 	if (e == ERR_OK)
 	{
-		skt->pid = myproc()->pid;
+		acquire(&skt->lock);
+		sleep(&skt->connect_chan, &skt->lock);
 	}
-	return e;
+
+	return -EINVAL;
 }
 
-int socketbind(struct socket *skt, struct sockaddr *addr, int addr_len)
+int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 {
 	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
 
@@ -155,7 +157,7 @@ int socketbind(struct socket *skt, struct sockaddr *addr, int addr_len)
 	return -EINVAL;
 }
 
-int socketlisten(struct socket *skt, int backlog)
+int socketlisten(socket_t *skt, int backlog)
 {
 	if (skt->protocol != IPPROTO_TCP)
 	{
@@ -174,7 +176,7 @@ int socketlisten(struct socket *skt, int backlog)
 	return -EINVAL;
 }
 
-struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrlen, int *err)
+struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, int *err)
 {
 	if (skt->protocol != IPPROTO_TCP)
 	{
@@ -183,6 +185,7 @@ struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrle
 	}
 
 	int avail = 0;
+
 	for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
 	{
 		if (skt->backlog[avail])
@@ -221,10 +224,12 @@ struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrle
 
 	*addrlen = sizeof(struct sockaddr_in);
 
+	skt->backlog[avail] = NULL;
+
 	return file;
 }
 
-int socketrecv(struct socket *skt, char *buf, int len, int flags)
+int socketrecv(socket_t *skt, char *buf, int len, int flags)
 {
 	if (skt->protocol != IPPROTO_TCP)
 	{
@@ -258,7 +263,7 @@ int socketrecv(struct socket *skt, char *buf, int len, int flags)
 	return 0;
 }
 
-int socketsend(struct socket *skt, char *buf, int len, int flags)
+int socketsend(socket_t *skt, char *buf, int len, int flags)
 {
 	if (skt->protocol != IPPROTO_TCP)
 	{
@@ -294,7 +299,7 @@ int socketsend(struct socket *skt, char *buf, int len, int flags)
 	return -EINVAL; // FIXME
 }
 
-int socketioctl(struct socket *skt, int req, void *arg)
+int socketioctl(socket_t *skt, int req, void *arg)
 {
 //	struct ifreq *ifreq;
 //	struct netdev *dev;
@@ -478,9 +483,7 @@ int socketioctl(struct socket *skt, int req, void *arg)
 err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
 					 u16_t size, err_t err)
 {
-	struct socket *socket = arg;
-	pid_t pid = socket->pid;
-	int r;
+	socket_t *socket = (socket_t *)arg;
 
 	switch (event)
 	{
@@ -495,16 +498,15 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 					break;
 				}
 			}
-			/* queue full */
+			// queue full
 			if (free >= SOCKET_NBACKLOG)
 			{
 				return ERR_MEM;
 			}
-			KDEBUG_MSG_ASSERT(pcb->listener == socket->pcb, "listener");
 			socket_t *newsocket = kmem_cache_alloc(socket_cache);
-			memset(newsocket, 0, sizeof(struct socket));
+			memset(newsocket, 0, sizeof(socket_t));
 
-			/* the passed in pcb is for the new socket */
+			// the passed in pcb is for the new socket
 			newsocket->pcb = pcb;
 			tcp_arg(pcb, newsocket);
 			newsocket->protocol = socket->protocol;
@@ -538,13 +540,8 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		socket->recv_offset = 0;
 		return ERR_OK;
 	case LWIP_EVENT_CONNECTED:
-		KDEBUG_MSG_ASSERT(pid != 0, "connect must have been called");
-		/* reset */
-		socket->pid = 0;
-		/* reply */
-		r = (err == ERR_OK) ? 0 : -EINVAL; // FIXME: -ECONNRESET;
-		r = sys_send(pid, r, virt_to_pn(pong), 0, -1);
-		assert(r == 0, "sys_send");
+		wakeup(&socket->connect_chan);
+		release(&socket->lock);
 		return ERR_OK;
 	case LWIP_EVENT_POLL:
 		/* ignore */

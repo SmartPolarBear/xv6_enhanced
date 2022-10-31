@@ -5,19 +5,22 @@
 
 #include "sockio.h"
 #include "lwip/ip_addr.h"
+#include "spinlock.h"
 
-#define SOCKET_NBACKLOG 5
+#define SOCKET_NBACKLOG 8
 
 typedef struct socket
 {
 	void *pcb;
-	pid_t pid;
 	struct pbuf *recv_buf;
 	int recv_offset;
 	int recv_closed;
 	struct socket *backlog[SOCKET_NBACKLOG];
 	int protocol;
 	int type;
+
+	int connect_chan;
+	spinlock_t lock;
 } socket_t;
 
 #define PF_UNSPEC   0
