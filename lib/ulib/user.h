@@ -3,6 +3,7 @@
 
 struct stat;
 struct rtcdate;
+struct sockaddr;
 
 // system calls
 int fork(void);
@@ -30,6 +31,18 @@ int uptime(void);
 int signal(int, sighandler_t);
 int fgproc();
 int alarm(int);
+
+int ioctl(int, int, ...);
+
+int socket(int, int, int);
+int connect(int, struct sockaddr*, int);
+int bind(int, struct sockaddr*, int);
+int listen(int, int);
+int accept(int, struct sockaddr*, int*);
+int recv(int, char*, int);
+int send(int, char*, int);
+int recvfrom(int, char*, int, struct sockaddr*, int*);
+int sendto(int, char*, int, struct sockaddr*, int);
 
 // ulib.c
 int stat(const char *, struct stat *);
