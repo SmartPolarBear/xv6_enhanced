@@ -29,7 +29,8 @@ typedef struct socket
 	int protocol;
 	int type;
 
-	int connect_chan;
+	char connect_chan;
+	char accept_chan;
 	spinlock_t lock;
 } socket_t;
 

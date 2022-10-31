@@ -63,6 +63,7 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 		fileclose(file);
 		return NULL;
 	}
+	memset(socket, 0, sizeof(socket_t));
 
 	socket->type = type;
 	socket->protocol = protocol;
@@ -186,20 +187,40 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 
 	int avail = 0;
 
-	for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
+	if(FALSE) // TODO: non-blocking
 	{
-		if (skt->backlog[avail])
+		for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
 		{
-			break;
+			if (skt->backlog[avail])
+			{
+				break;
+			}
+		}
+
+		if (avail >= SOCKET_NBACKLOG)
+		{
+			*err = -EAGAIN;
+			return NULL;
+		}
+	}
+	else
+	{
+		for(;;)
+		{
+			acquire(&skt->lock);
+			for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
+			{
+				if (skt->backlog[avail])
+				{
+					release(&skt->lock);
+					goto found;
+				}
+			}
+			sleep(&skt->accept_chan, &skt->lock);
 		}
 	}
 
-	if (avail >= SOCKET_NBACKLOG)
-	{
-		*err = -EAGAIN;
-		return NULL;
-	}
-
+found:
 	file_t *file = filealloc();
 	if (file == NULL)
 	{
