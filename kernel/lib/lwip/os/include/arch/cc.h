@@ -1,4 +1,4 @@
-#define LWIP_PLATFORM_DIAG(x) do { printf x; } while(0)
+#define LWIP_PLATFORM_DIAG(x) do { cprintf x; } while(0)
 #define LWIP_PLATFORM_ASSERT(x) panic(x)
 
 #define LWIP_NO_CTYPE_H 1
@@ -20,7 +20,7 @@ typedef signed int ssize_t;
 /* horrible rand */
 #define LWIP_RAND lwip_rand
 
-void printf(char *, ...);
+void cprintf(char *, ...);
 void panic(char *) __attribute__((noreturn));
 unsigned long lwip_rand(void);
 

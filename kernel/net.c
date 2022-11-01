@@ -163,6 +163,7 @@ netadd(int n)
 
 	new->name[0] = 'e';
 	new->name[1] = 'n';
+
 	netif_set_link_up(new);
 	netif_set_up(new);
 

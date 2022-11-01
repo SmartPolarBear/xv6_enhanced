@@ -228,6 +228,9 @@ QEMUOPTS += -netdev type=user,id=en0,hostfwd=tcp::$(PORT80)-:80,hostfwd=tcp::$(P
 qemu: # fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)
 
+qemu-net: # fs.img xv6.img
+	$(QEMU) -serial mon:stdio $(QEMUOPTS)
+
 qemu-memfs: xv6memfs.img
 	$(QEMU) -drive file=xv6memfs.img,index=0,media=disk,format=raw -smp $(CPUS) -m 256
 

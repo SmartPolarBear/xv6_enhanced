@@ -78,6 +78,8 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 		socket->pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
 	}
 
+	tcp_arg(socket->pcb, socket);
+
 	file->type = FD_SOCKET;
 	file->socket = socket;
 	file->readable = TRUE;
@@ -151,7 +153,7 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 	}
 
 	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-	err_t err = tcp_bind(pcb, &addr_in->sin_addr, addr_in->sin_port);
+	err_t err = tcp_bind(pcb, IP4_ADDR_ANY, 7); //&addr_in->sin_addr, addr_in->sin_port);
 
 	if (err == ERR_OK)
 	{
@@ -505,7 +507,6 @@ int socketioctl(socket_t *skt, int req, void *arg)
 err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
 					 u16_t size, err_t err)
 {
-	cprintf("fuck!");
 	socket_t *socket = (socket_t *)arg;
 
 	switch (event)

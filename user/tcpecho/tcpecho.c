@@ -33,7 +33,7 @@ main(int argc, char *argv[])
 	}
 	addr = (unsigned char *)&self.sin_addr;
 	printf(1, "bind: success, self=%d.%d.%d.%d:%d\n", addr[0], addr[1], addr[2], addr[3], ntoh16(self.sin_port));
-	listen(soc, 100);
+	listen(soc, 5);
 	printf(1, "waiting for connection...\n");
 	peerlen = sizeof(peer);
 	acc = accept(soc, (struct sockaddr *)&peer, &peerlen);
