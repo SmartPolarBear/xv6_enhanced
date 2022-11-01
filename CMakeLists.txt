@@ -58,7 +58,8 @@ add_custom_target(fs_img ALL
         $<TARGET_FILE:_mkdir>
         $<TARGET_FILE:_rm>
         $<TARGET_FILE:_tcpecho>
-    DEPENDS mkfs _cat _echo _forktest _grep _init _kill _ln _ls _mkdir _rm _sh _stressfs _tcpecho _usertests _wc _zombie
+        $<TARGET_FILE:_daytime>
+    DEPENDS mkfs _cat _echo _forktest _grep _init _kill _ln _ls _mkdir _rm _sh _stressfs _tcpecho _daytime _usertests _wc _zombie
     BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/fs.img
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating fs.img ramdisk")

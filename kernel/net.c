@@ -45,6 +45,25 @@ netdev_t *find_card_by_id(int n)
 	return NULL;
 }
 
+netdev_t *find_card_by_name(char *name)
+{
+	list_head_t *pos;
+	acquire(&netcard_list_lock);
+
+	list_for_each(pos, &netcard_list)
+	{
+		netdev_t *card = list_entry(pos, netdev_t, link);
+		if (strncmp(card->name, name, NNETCARDNAME) == 0)
+		{
+			release(&netcard_list_lock);
+			return card;
+		}
+	}
+
+	release(&netcard_list_lock);
+	return NULL;
+}
+
 err_t
 linkoutput(struct netif *netif, struct pbuf *p)
 {

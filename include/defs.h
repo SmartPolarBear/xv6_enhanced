@@ -235,6 +235,8 @@ int nettimer(void);
 struct netdev *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt);
 struct netdev *nic_unregister(struct netdev *nic);
 void nic_free(struct netdev *nic);
+struct netdev *find_card_by_id(int n);
+struct netdev *find_card_by_name(char *name);
 
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);

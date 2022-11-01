@@ -223,7 +223,7 @@ QEMUOPTS += -device e1000,netdev=en0 -object filter-dump,id=f0,netdev=en0,file=e
 #QEMUOPTS += -device virtio-net-pci,netdev=en0 -object filter-dump,id=f0,netdev=en0,file=en0.pcap
 
 # port fowarding
-QEMUOPTS += -netdev type=user,id=en0,hostfwd=tcp::$(PORT80)-:80,hostfwd=tcp::$(PORT7)-:7
+QEMUOPTS += -netdev type=user,id=en0,hostfwd=tcp::$(PORT80)-:80,hostfwd=tcp::$(PORT7)-:7,hostfwd=udp::$(PORT80)-:80,hostfwd=udp::$(PORT7)-:7
 
 qemu: # fs.img xv6.img
 	$(QEMU) -serial mon:stdio $(QEMUOPTS)

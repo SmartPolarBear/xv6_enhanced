@@ -13,7 +13,7 @@
 #else
 typedef struct ip4_addr
 {
-	uint32_t addr;
+	uint32 addr;
 } ip4_addr_t;
 
 typedef ip4_addr_t ip_addr_t;

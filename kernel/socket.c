@@ -14,6 +14,7 @@
 #include "mmu.h"
 #include "proc.h"
 
+#include "net.h"
 #include "socket.h"
 #include "lwip/tcp.h"
 #include "lwip/udp.h"
@@ -134,6 +135,7 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 	{
 		acquire(&skt->lock);
 		sleep(&skt->connect_chan, &skt->lock);
+		return 0;
 	}
 
 	return -EINVAL;
@@ -187,7 +189,7 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 
 	int avail = 0;
 
-	if(FALSE) // TODO: non-blocking
+	if (FALSE) // TODO: non-blocking
 	{
 		for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
 		{
@@ -205,7 +207,7 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	}
 	else
 	{
-		for(;;)
+		for (;;)
 		{
 			acquire(&skt->lock);
 			for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
@@ -330,16 +332,16 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //	{
 //	case SIOCGIFINDEX:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
 //		}
-//		ifreq->ifr_ifindex = dev->index;
+//		ifreq->ifr_ifindex = dev->id;
 //		break;
 //	case SIOCGIFNAME:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_index(ifreq->ifr_ifindex);
+//		dev = find_card_by_id(ifreq->ifr_ifindex);
 //		if (!dev)
 //		{
 //			return -1;
@@ -351,20 +353,20 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCGIFHWADDR:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
 //		}
-//		/* TODO: HW type check */
-//		memcpy(ifreq->ifr_hwaddr.sa_data, dev->addr, dev->alen);
+//		// TODO: HW type check
+//		memmove(ifreq->ifr_hwaddr.sa_data, dev->addr, dev->alen);
 //		break;
 //	case SIOCSIFHWADDR:
-//		/* TODO */
+//		// TODO
 //		break;
 //	case SIOCGIFFLAGS:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -373,7 +375,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCSIFFLAGS:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -392,7 +394,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCGIFADDR:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -406,7 +408,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCSIFADDR:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -434,7 +436,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCGIFNETMASK:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -448,7 +450,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCSIFNETMASK:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -468,7 +470,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCGIFBRDADDR:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -485,7 +487,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //		break;
 //	case SIOCGIFMTU:
 //		ifreq = (struct ifreq *)arg;
-//		dev = netdev_by_name(ifreq->ifr_name);
+//		dev = find_card_by_name(ifreq->ifr_name);
 //		if (!dev)
 //		{
 //			return -1;
@@ -497,13 +499,13 @@ int socketioctl(socket_t *skt, int req, void *arg)
 //	default:
 //		return -1;
 //	}
-//	return 0;
 	return 0;
 }
 
 err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
 					 u16_t size, err_t err)
 {
+	cprintf("fuck!");
 	socket_t *socket = (socket_t *)arg;
 
 	switch (event)
