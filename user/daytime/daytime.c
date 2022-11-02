@@ -9,6 +9,7 @@
 /* RFC 867: Daytime Protocol */
 #define SERVER_HOST "utcnist.colorado.edu"
 #define SERVER_PORT 13
+char buf[512];
 
 int main(int argc, char **argv)
 {
@@ -22,20 +23,16 @@ int main(int argc, char **argv)
 
 	sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	printf(1, "socket\n");
 
-	printf(1, "connecting\n");
 	r = connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 	if (r < 0)
 	{
 		printf(1, "daytime: connect failed: %d\n", r);
 		exit(-1);
 	}
-	printf(1, "connected\n");
 
 	while (1)
 	{
-		char buf[512];
 		ssize_t n;
 
 		n = recv(sockfd, buf, sizeof(buf));

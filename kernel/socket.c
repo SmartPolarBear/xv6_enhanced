@@ -342,9 +342,14 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 
 	err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
 
+	if (err != ERR_OK)
+	{
+		return -EINVAL; //FIXME
+	}
+
+	err = tcp_output(pcb);
 	if (err == ERR_OK)
 	{
-		tcp_output(pcb);
 		return len;
 	}
 
@@ -358,181 +363,6 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 
 int socketioctl(socket_t *skt, int req, void *arg)
 {
-//	struct ifreq *ifreq;
-//	struct netdev *dev;
-//	struct netif *iface;
-//
-//	switch (req)
-//	{
-//	case SIOCGIFINDEX:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		ifreq->ifr_ifindex = dev->id;
-//		break;
-//	case SIOCGIFNAME:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_id(ifreq->ifr_ifindex);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		strncpy(ifreq->ifr_name, dev->name, sizeof(ifreq->ifr_name));
-//		break;
-//	case SIOCSIFNAME:
-//		/* TODO */
-//		break;
-//	case SIOCGIFHWADDR:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		// TODO: HW type check
-//		memmove(ifreq->ifr_hwaddr.sa_data, dev->addr, dev->alen);
-//		break;
-//	case SIOCSIFHWADDR:
-//		// TODO
-//		break;
-//	case SIOCGIFFLAGS:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		ifreq->ifr_flags = dev->flags;
-//		break;
-//	case SIOCSIFFLAGS:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		if ((dev->flags & IFF_UP) != (ifreq->ifr_flags & IFF_UP))
-//		{
-//			if (ifreq->ifr_flags & IFF_UP)
-//			{
-//				dev->ops->open(dev);
-//			}
-//			else
-//			{
-//				dev->ops->stop(dev);
-//			}
-//		}
-//		break;
-//	case SIOCGIFADDR:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		iface = netdev_get_netif(dev, ifreq->ifr_addr.sa_family);
-//		if (!iface)
-//		{
-//			return -1;
-//		}
-//		((struct sockaddr_in *)&ifreq->ifr_addr)->sin_addr = ((struct netif_ip *)iface)->unicast;
-//		break;
-//	case SIOCSIFADDR:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		iface = netdev_get_netif(dev, ifreq->ifr_addr.sa_family);
-//		if (iface)
-//		{
-//			if (ip_netif_reconfigure(iface,
-//									 ((struct sockaddr_in *)&ifreq->ifr_addr)->sin_addr,
-//									 ((struct netif_ip *)iface)->netmask,
-//									 ((struct netif_ip *)iface)->gateway) == -1)
-//			{
-//				return -1;
-//			}
-//		}
-//		else
-//		{
-//			iface = ip_netif_alloc(((struct sockaddr_in *)&ifreq->ifr_addr)->sin_addr, 0xffffffff, 0);
-//			if (!iface)
-//			{
-//				return -1;
-//			}
-//			netdev_add_netif(dev, iface);
-//		}
-//		break;
-//	case SIOCGIFNETMASK:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		iface = netdev_get_netif(dev, ifreq->ifr_addr.sa_family);
-//		if (!iface)
-//		{
-//			return -1;
-//		}
-//		((struct sockaddr_in *)&ifreq->ifr_netmask)->sin_addr = ((struct netif_ip *)iface)->netmask;
-//		break;
-//	case SIOCSIFNETMASK:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		iface = netdev_get_netif(dev, ifreq->ifr_addr.sa_family);
-//		if (!iface)
-//		{
-//			return -1;
-//		}
-//		if (ip_netif_reconfigure(iface,
-//								 ((struct netif_ip *)iface)->unicast,
-//								 ((struct sockaddr_in *)&ifreq->ifr_addr)->sin_addr,
-//								 ((struct netif_ip *)iface)->gateway) == -1)
-//		{
-//			return -1;
-//		}
-//		break;
-//	case SIOCGIFBRDADDR:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		iface = netdev_get_netif(dev, ifreq->ifr_addr.sa_family);
-//		if (!iface)
-//		{
-//			return -1;
-//		}
-//		((struct sockaddr_in *)&ifreq->ifr_broadaddr)->sin_addr = ((struct netif_ip *)iface)->broadcast;
-//		break;
-//	case SIOCSIFBRDADDR:
-//		/* TODO */
-//		break;
-//	case SIOCGIFMTU:
-//		ifreq = (struct ifreq *)arg;
-//		dev = find_card_by_name(ifreq->ifr_name);
-//		if (!dev)
-//		{
-//			return -1;
-//		}
-//		ifreq->ifr_mtu = dev->mtu;
-//		break;
-//	case SIOCSIFMTU:
-//		break;
-//	default:
-//		return -1;
-//	}
 	return 0;
 }
 
@@ -575,6 +405,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		return ERR_OK;
 	case LWIP_EVENT_SENT:
 		/* ignore */
+		cprintf("fuck sent\n");
 		return ERR_OK;
 	case LWIP_EVENT_RECV:
 		/* closed or error */
