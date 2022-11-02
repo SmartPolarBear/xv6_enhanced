@@ -1,6 +1,3 @@
-//
-// Created by bear on 10/31/2022.
-//
 #include "types.h"
 #include "user.h"
 #include "socket.h"
@@ -15,33 +12,32 @@ main(int argc, char *argv[])
 
 	printf(1, "Starting TCP Echo Server\n");
 	soc = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (soc <= 1)
+	if (soc == 1)
 	{
 		printf(1, "socket: failure\n");
-		exit(-1);
+		exit(soc);
 	}
 	printf(1, "socket: success, soc=%d\n", soc);
 	self.sin_family = AF_INET;
 	self.sin_addr.addr = INADDR_ANY;
 	self.sin_port = hton16(7);
-	int err = bind(soc, (struct sockaddr *)&self, sizeof(self));
-	if (err != 0)
+	if (bind(soc, (struct sockaddr *)&self, sizeof(self)) == -1)
 	{
 		printf(1, "bind: failure\n");
 		close(soc);
-		exit(err);
+		exit(soc);
 	}
 	addr = (unsigned char *)&self.sin_addr;
 	printf(1, "bind: success, self=%d.%d.%d.%d:%d\n", addr[0], addr[1], addr[2], addr[3], ntoh16(self.sin_port));
-	listen(soc, 5);
+	listen(soc, 100);
 	printf(1, "waiting for connection...\n");
 	peerlen = sizeof(peer);
 	acc = accept(soc, (struct sockaddr *)&peer, &peerlen);
-	if (acc != 0)
+	if (acc == -1)
 	{
 		printf(1, "accept: failure\n");
 		close(soc);
-		exit(acc);
+		exit(soc);
 	}
 	addr = (unsigned char *)&peer.sin_addr;
 	printf(1, "accept: success, peer=%d.%d.%d.%d:%d\n", addr[0], addr[1], addr[2], addr[3], ntoh16(peer.sin_port));

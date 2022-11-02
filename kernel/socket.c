@@ -137,6 +137,7 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 	{
 		acquire(&skt->lock);
 		sleep(&skt->connect_chan, &skt->lock);
+		release(&skt->lock);
 		return 0;
 	}
 
@@ -209,7 +210,7 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	}
 	else
 	{
-		for (;;)
+		while (!skt->backlog[avail])
 		{
 			acquire(&skt->lock);
 			for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
@@ -217,14 +218,18 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 				if (skt->backlog[avail])
 				{
 					release(&skt->lock);
-					goto found;
+					break;
 				}
 			}
-			sleep(&skt->accept_chan, &skt->lock);
+
+			if (avail >= SOCKET_NBACKLOG)
+			{
+				sleep(&skt->accept_chan, &skt->lock);
+				release(&skt->lock);
+			}
 		}
 	}
 
-found:
 	file_t *file = filealloc();
 	if (file == NULL)
 	{
@@ -240,7 +245,6 @@ found:
 	file->writable = TRUE;
 
 	struct tcp_pcb *newpcb = socket->pcb;
-	*err = 0;
 
 	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
 	in_addr->sin_addr = newpcb->remote_ip;
@@ -251,6 +255,7 @@ found:
 
 	skt->backlog[avail] = NULL;
 
+	*err = 0;
 	return file;
 }
 
@@ -537,6 +542,8 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 			newsocket->type = socket->type;
 
 			socket->backlog[free] = newsocket;
+
+			wakeup(&socket->accept_chan);
 		}
 		return ERR_OK;
 	case LWIP_EVENT_SENT:
@@ -565,7 +572,6 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		return ERR_OK;
 	case LWIP_EVENT_CONNECTED:
 		wakeup(&socket->connect_chan);
-		release(&socket->lock);
 		return ERR_OK;
 	case LWIP_EVENT_POLL:
 		/* ignore */

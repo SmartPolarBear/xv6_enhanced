@@ -114,14 +114,12 @@ sys_accept(void)
 
 	int err = 0;
 	af = socketaccept(f->socket, addr, addrlen, &err);
-	if (err != 0 || (afd = fdalloc(af)) < 0)
+	if (err < 0)
 	{
-		if (af)
-		{
-			fileclose(af);
-		}
 		return err;
 	}
+
+	afd = fdalloc(af);
 	return afd;
 }
 
