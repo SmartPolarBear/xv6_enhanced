@@ -271,13 +271,40 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 		return -EINVAL;
 	}
 
-	if (skt->recv_buf == NULL)
+	if (FALSE)
 	{
-		if (skt->recv_closed)
+		if (skt->recv_buf == NULL)
 		{
-			return -EINVAL; // FIXME
+			if (skt->recv_closed)
+			{
+				return -EINVAL; // FIXME
+			}
+			return -EAGAIN;
 		}
-		return -EAGAIN;
+	}
+	else
+	{
+		while (!skt->recv_buf)
+		{
+			if (skt->recv_closed)
+			{
+				return -EINVAL; // FIXME
+			}
+
+			if (skt->recv_buf)
+			{
+				break;
+			}
+
+			acquire(&skt->lock);
+			sleep(&skt->recv_chan, &skt->lock);
+			release(&skt->lock);
+
+			if (skt->recv_buf)
+			{
+				break;
+			}
+		}
 	}
 
 	len = pbuf_copy_partial(skt->recv_buf, buf, len, skt->recv_offset);
@@ -290,7 +317,7 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 		skt->recv_buf = NULL;
 		skt->recv_offset = 0;
 	}
-	return 0;
+	return len;
 }
 
 int socketsend(socket_t *skt, char *buf, int len, int flags)
@@ -569,6 +596,8 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		tcp_recved(socket->pcb, p->tot_len);
 		socket->recv_buf = p;
 		socket->recv_offset = 0;
+
+		wakeup(&socket->recv_chan);
 		return ERR_OK;
 	case LWIP_EVENT_CONNECTED:
 		wakeup(&socket->connect_chan);

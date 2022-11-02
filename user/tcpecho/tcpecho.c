@@ -51,7 +51,12 @@ main(int argc, char *argv[])
 		}
 		printf(1, "recv: %d bytes data received\n", ret);
 		hexdump(buf, ret);
-		send(acc, buf, ret);
+
+		if (send(acc, buf, ret) != ret)
+		{
+			printf(1, "send: failure\n");
+			break;
+		}
 	}
 	close(soc);
 	return 0;

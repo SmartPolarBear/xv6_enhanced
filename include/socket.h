@@ -31,6 +31,8 @@ typedef struct socket
 
 	char connect_chan;
 	char accept_chan;
+	char recv_chan;
+
 	spinlock_t lock;
 } socket_t;
 
