@@ -23,8 +23,7 @@ int main(int argc, char **argv)
 
 	sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-
-	r = connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr_in));
+	r = connect(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
 	if (r < 0)
 	{
 		printf(1, "daytime: connect failed: %d\n", r);

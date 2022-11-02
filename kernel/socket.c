@@ -68,7 +68,9 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 
 	socket->type = type;
 	socket->protocol = protocol;
+	socket->file = file;
 
+	netbegin_op();
 	if (type == SOCK_STREAM)
 	{
 		socket->pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
@@ -79,6 +81,8 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 	}
 
 	tcp_arg(socket->pcb, socket);
+
+	netend_op();
 
 	file->type = FD_SOCKET;
 	file->socket = socket;
@@ -91,6 +95,8 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 
 void socketclose(socket_t *skt)
 {
+	netbegin_op();
+
 	if (skt->recv_buf)
 	{
 		pbuf_free(skt->recv_buf);
@@ -110,6 +116,7 @@ void socketclose(socket_t *skt)
 		tcp_close(skt->pcb); // ? why twice?
 		skt->pcb = NULL;
 	}
+	netend_op();
 
 	for (int i = 0; i < SOCKET_NBACKLOG; i++)
 	{
@@ -119,6 +126,12 @@ void socketclose(socket_t *skt)
 			skt->backlog[i] = NULL;
 		}
 	}
+
+	wakeup(&skt->connect_chan);
+	wakeup(&skt->recv_chan);
+	wakeup(&skt->accept_chan);
+
+	fileclose(skt->file);
 
 	kmem_cache_free(socket_cache, skt);
 }
@@ -131,13 +144,17 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 		return -EINVAL;
 	}
 
+	netbegin_op();
 	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
 	err_t e = tcp_connect(pcb, &addr_in->sin_addr, addr_in->sin_port, NULL);
+	netend_op();
+
 	if (e == ERR_OK)
 	{
 		acquire(&skt->lock);
 		sleep(&skt->connect_chan, &skt->lock);
 		release(&skt->lock);
+
 		return 0;
 	}
 
@@ -153,8 +170,10 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 		return -EINVAL;
 	}
 
+	netbegin_op();
 	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
 	err_t err = tcp_bind(pcb, &addr_in->sin_addr, addr_in->sin_port);
+	netend_op();
 
 	if (err == ERR_OK)
 	{
@@ -170,10 +189,15 @@ int socketlisten(socket_t *skt, int backlog)
 		return -EINVAL;
 	}
 
+	netbegin_op();
+
 	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
 	err_t err = 0;
 	pcb = tcp_listen_with_backlog_and_err(pcb, backlog, &err);
 	skt->pcb = pcb;
+
+	netend_op();
+
 	if (err == ERR_OK)
 	{
 		return 0;
@@ -295,6 +319,7 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 			release(&skt->lock);
 		}
 	}
+	netbegin_op();
 
 	len = pbuf_copy_partial(skt->recv_buf, buf, len, skt->recv_offset);
 	skt->recv_offset += len;
@@ -306,6 +331,9 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 		skt->recv_buf = NULL;
 		skt->recv_offset = 0;
 	}
+
+	netend_op();
+
 	return len;
 }
 
@@ -327,9 +355,11 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 		return -EAGAIN;
 	}
 
+	netbegin_op();
 	len = MIN(len, pcb->snd_buf);
 
 	err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
+	netend_op();
 
 	if (err != ERR_OK)
 	{
@@ -427,7 +457,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 	case LWIP_EVENT_ERR:
 		/* pcb is already deallocated */
 		socket->pcb = NULL;
-		/* let gc do the job: free_socket(socket); */
+		socketclose(socket);
 		return ERR_ABRT;
 	default:
 		break;

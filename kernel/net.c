@@ -19,6 +19,7 @@
 #include "lwip/timeouts.h"
 
 struct netif netif[NNETIF];
+struct spinlock lwip_lock;
 
 list_head_t netcard_list = LIST_HEAD_INIT(netcard_list);
 size_t netcard_count = 0;
@@ -80,6 +81,7 @@ linkoutput(struct netif *netif, struct pbuf *p)
 		size_t len = card->opts->send(card, q->payload, q->len);
 		if (len != q->len)
 		{
+
 			return ERR_IF;
 		}
 	}
@@ -96,12 +98,14 @@ linkinput(struct netif *netif)
 	p = pbuf_alloc(PBUF_RAW, 1514, PBUF_RAM);
 	if (!p)
 	{
+
 		return 0;
 	}
 
 	netdev_t *card = netif->state;
 	if (!card->opts->receive)
 	{
+
 		return 0;
 	}
 
@@ -114,6 +118,7 @@ linkinput(struct netif *netif)
 
 		if (netif->input(p, netif) == ERR_OK)
 		{
+
 			return len;
 		}
 
@@ -121,6 +126,7 @@ linkinput(struct netif *netif)
 	}
 
 	pbuf_free(p);
+
 	return len;
 }
 
@@ -200,13 +206,15 @@ netadd(int n)
 	ipaddr_ntoa_r(netif_ip_netmask4(new), netmask, sizeof(netmask));
 	ipaddr_ntoa_r(netif_ip_gw4(new), gw, sizeof(gw));
 	cprintf("net %d: addr %s netmask %s gw %s\n", n, addr, netmask, gw);
+
 }
 
 int
 nettimer(void)
 {
 	sys_check_timeouts();
-	return linkinput(&netif[0]);
+	int ret = linkinput(&netif[0]);
+	return ret;
 }
 
 void
@@ -259,6 +267,16 @@ struct netdev *nic_unregister(struct netdev *nic)
 void nic_free(struct netdev *nic)
 {
 	kmem_cache_free(netcard_cache, nic);
+}
+
+void netbegin_op()
+{
+	acquire(&lwip_lock);
+}
+
+void netend_op()
+{
+	release(&lwip_lock);
 }
 
 void netstart(void)

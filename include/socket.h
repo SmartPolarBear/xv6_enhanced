@@ -22,6 +22,7 @@ typedef ip4_addr_t ip_addr_t;
 typedef struct socket
 {
 	void *pcb;
+	struct file *file;
 	struct pbuf *recv_buf;
 	int recv_offset;
 	int recv_closed;

@@ -237,6 +237,8 @@ struct netdev *nic_unregister(struct netdev *nic);
 void nic_free(struct netdev *nic);
 struct netdev *find_card_by_id(int n);
 struct netdev *find_card_by_name(char *name);
+void netbegin_op();
+void netend_op();
 
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);

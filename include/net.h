@@ -5,6 +5,7 @@
 
 #include "types.h"
 #include "if.h"
+#include "spinlock.h"
 
 #define NNETCARDNAME 16
 
@@ -39,3 +40,5 @@ typedef struct netdev
 
 	void *priv;
 } netdev_t;
+
+extern struct spinlock lwip_lock;
