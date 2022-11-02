@@ -154,7 +154,7 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 	}
 
 	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-	err_t err = tcp_bind(pcb, IP4_ADDR_ANY, 7); //&addr_in->sin_addr, addr_in->sin_port);
+	err_t err = tcp_bind(pcb, &addr_in->sin_addr, addr_in->sin_port);
 
 	if (err == ERR_OK)
 	{
@@ -290,20 +290,9 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 			{
 				return -EINVAL; // FIXME
 			}
-
-			if (skt->recv_buf)
-			{
-				break;
-			}
-
 			acquire(&skt->lock);
 			sleep(&skt->recv_chan, &skt->lock);
 			release(&skt->lock);
-
-			if (skt->recv_buf)
-			{
-				break;
-			}
 		}
 	}
 
@@ -405,7 +394,6 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		return ERR_OK;
 	case LWIP_EVENT_SENT:
 		/* ignore */
-		cprintf("fuck sent\n");
 		return ERR_OK;
 	case LWIP_EVENT_RECV:
 		/* closed or error */
@@ -418,7 +406,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 			socket->recv_closed = TRUE;
 			return ERR_OK;
 		}
-		/* buffer hasn't been received */
+		// buffer hasn't been received
 		if (socket->recv_buf)
 		{
 			return ERR_MEM;

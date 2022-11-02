@@ -160,7 +160,7 @@ sys_send(void)
 	{
 		return -1;
 	}
-	return socketrecv(f->socket, p, n, flags);
+	return socketsend(f->socket, p, n, flags);
 }
 
 int

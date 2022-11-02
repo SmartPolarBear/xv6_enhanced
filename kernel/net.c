@@ -77,7 +77,8 @@ linkoutput(struct netif *netif, struct pbuf *p)
 
 	for (q = p; q; q = q->next)
 	{
-		if (card->opts->send(card, q->payload, q->len))
+		size_t len = card->opts->send(card, q->payload, q->len);
+		if (len != q->len)
 		{
 			return ERR_IF;
 		}
