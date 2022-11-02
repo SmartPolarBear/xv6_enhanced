@@ -413,7 +413,11 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 
 			// the passed in pcb is for the new socket
 			newsocket->pcb = pcb;
+
+			netbegin_op();
 			tcp_arg(pcb, newsocket);
+			netend_op();
+
 			newsocket->protocol = socket->protocol;
 			newsocket->type = socket->type;
 
@@ -431,7 +435,9 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		{
 			if (p)
 			{
+				netbegin_op();
 				pbuf_free(p);
+				netend_op();
 			}
 			socket->recv_closed = TRUE;
 			return ERR_OK;
@@ -442,7 +448,10 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 			return ERR_MEM;
 		}
 		/* ack the packet */
+		netbegin_op();
 		tcp_recved(socket->pcb, p->tot_len);
+		netend_op();
+
 		socket->recv_buf = p;
 		socket->recv_offset = 0;
 
