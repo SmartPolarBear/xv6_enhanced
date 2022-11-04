@@ -34,7 +34,8 @@ sys_socket(void)
 		{
 			fileclose(f);
 		}
-		return err;
+		seterror(err);
+		return -1;
 	}
 	return fd;
 }
@@ -54,7 +55,13 @@ sys_connect(void)
 	{
 		return -1;
 	}
-	return socketconnect(f->socket, addr, addrlen);
+	int err = socketconnect(f->socket, addr, addrlen);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+	return 0;
 }
 
 int
@@ -72,7 +79,13 @@ sys_bind(void)
 	{
 		return -1;
 	}
-	return socketbind(f->socket, addr, addrlen);
+	int err = socketbind(f->socket, addr, addrlen);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+	return 0;
 }
 
 int
@@ -89,7 +102,13 @@ sys_listen(void)
 	{
 		return -1;
 	}
-	return socketlisten(f->socket, backlog);
+	int err = socketlisten(f->socket, backlog);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+	return 0;
 }
 
 int
@@ -116,7 +135,8 @@ sys_accept(void)
 	af = socketaccept(f->socket, addr, addrlen, &err);
 	if (err < 0)
 	{
-		return err;
+		seterror(err);
+		return -1;
 	}
 
 	afd = fdalloc(af);
@@ -140,7 +160,13 @@ sys_recv(void)
 	{
 		return -1;
 	}
-	return socketrecv(f->socket, p, n, flags);
+	int err = socketrecv(f->socket, p, n, flags);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+	return err; // length
 }
 
 int
@@ -160,7 +186,13 @@ sys_send(void)
 	{
 		return -1;
 	}
-	return socketsend(f->socket, p, n, flags);
+	int err = socketsend(f->socket, p, n, flags);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+	return err; // length
 }
 
 int

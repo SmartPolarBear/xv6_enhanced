@@ -8,6 +8,13 @@
     int $T_SYSCALL; \
     ret
 
+#define PSYSCALL(name) \
+  .globl $__ ## name; \
+  $__ ## name: \
+    movl $SYS_ ## name, %eax; \
+    int $T_SYSCALL; \
+    ret
+
 SYSCALL(fork)
 SYSCALL(exit)
 SYSCALL(wait)
@@ -43,3 +50,5 @@ SYSCALL(listen)
 SYSCALL(accept)
 SYSCALL(recv)
 SYSCALL(send)
+
+PSYSCALL(error)

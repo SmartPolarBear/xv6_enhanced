@@ -108,6 +108,7 @@ extern int sys_sigreturn(void);
 extern int sys_signal(void);
 extern int sys_fgproc(void);
 extern int sys_alarm(void);
+int sys_error();
 
 // sysfile.c
 extern int sys_chdir(void);
@@ -164,16 +165,17 @@ static int (*syscalls[])(void) = {
 	[SYS_fgproc] = sys_fgproc,
 	[SYS_alarm]=sys_alarm,
 
-	[SYS_ioctl]    sys_ioctl,
-	[SYS_socket]   sys_socket,
-	[SYS_connect]  sys_connect,
-	[SYS_bind]     sys_bind,
-	[SYS_listen]   sys_listen,
-	[SYS_accept]   sys_accept,
-	[SYS_recv]     sys_recv,
-	[SYS_send]     sys_send,
-	[SYS_recvfrom] sys_recvfrom,
-	[SYS_sendto]   sys_sendto,
+	[SYS_ioctl]    =sys_ioctl,
+	[SYS_socket]   =sys_socket,
+	[SYS_connect]  =sys_connect,
+	[SYS_bind]     =sys_bind,
+	[SYS_listen]   =sys_listen,
+	[SYS_accept]   =sys_accept,
+	[SYS_recv]     =sys_recv,
+	[SYS_send]     =sys_send,
+	[SYS_recvfrom] =sys_recvfrom,
+	[SYS_sendto]   =sys_sendto,
+	[SYS_error]    =sys_error,
 };
 
 void

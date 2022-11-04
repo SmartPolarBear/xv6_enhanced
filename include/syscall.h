@@ -38,3 +38,4 @@
 #define SYS_send     34
 #define SYS_recvfrom 35
 #define SYS_sendto   36
+#define SYS_error    37

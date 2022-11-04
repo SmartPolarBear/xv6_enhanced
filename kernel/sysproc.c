@@ -7,6 +7,13 @@
 #include "mmu.h"
 #include "proc.h"
 
+int errnos[NCPU];
+
+void seterror(int err)
+{
+	errnos[mycpu()->apicid] = err;
+}
+
 int
 sys_fork(void)
 {
@@ -189,4 +196,9 @@ int sys_alarm(void)
 		return myproc()->alarm_ticks;
 	}
 	return 0;
+}
+
+int sys_error()
+{
+	return errnos[mycpu()->apicid];
 }

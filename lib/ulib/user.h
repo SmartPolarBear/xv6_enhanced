@@ -32,6 +32,9 @@ int signal(int, sighandler_t);
 int fgproc();
 int alarm(int);
 
+int __error(void);
+#define errno (* __error())
+
 int ioctl(int, int, ...);
 
 int socket(int, int, int);

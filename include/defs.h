@@ -139,6 +139,9 @@ int signal_deliver(int pid, int signal);
 void signal_return();
 void run_signal(struct trapframe *);
 
+// sysproc.c
+void seterror(int);
+
 // swtch.S
 void swtch(struct context **, struct context *);
 
