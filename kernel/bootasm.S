@@ -36,6 +36,25 @@ seta20.2:
   movb    $0xdf,%al               # 0xdf -> port 0x60
   outb    %al,$0x60
 
+probe_memory:
+  movl $0, 0x8000
+  xorl %ebx, %ebx
+  movw $0x8004, %di
+start_probe:
+  movl $0xE820, %eax
+  movl $20, %ecx
+  movl $0x534d4150, %edx
+  int $0x15
+  jnc cont
+  movw $12345, 0x8000
+  jmp finish_probe
+cont:
+  addw $20, %di
+  incl 0x8000
+  cmpl $0, %ebx
+  jnz start_probe
+finish_probe:
+
   # Switch from real to protected mode.  Use a bootstrap GDT that makes
   # virtual addresses map directly to physical addresses so that the
   # effective memory map doesn't change during the transition.

@@ -12,15 +12,25 @@ static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
 extern char end[]; // first address after kernel loaded from ELF file
 
+// pmm.c
+extern struct e820map_item e820_memmap[E820MAX];
+extern size_t e820_memmap_len;
+
 // Bootstrap processor starts running C code here.
 // Allocate a real stack and switch to it, first
 // doing some setup required for memory allocator to work.
 int
 main(void)
 {
+	// copy out e820 memory map from 0x8000
+	struct e820map *e820 = (struct e820map *)P2V(0x8000);
+	memmove(e820_memmap, e820->map, sizeof(struct e820map_item) * e820->nr_map);
+	e820_memmap_len = e820->nr_map;
+
 	kinit1(end, P2V(4 * 1024 * 1024)); // phys page allocator
 	kvmalloc();      // kernel page table
 	mpinit();        // detect other processors
+	pmminit();		 // physical memory manager
 	lapicinit();     // interrupt controller
 	seginit();       // segment descriptors
 	picinit();       // disable pic

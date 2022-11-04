@@ -261,3 +261,6 @@ struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrle
 int socketrecv(struct socket *skt, char *buf, int len, int flags);
 int socketsend(struct socket *skt, char *buf, int len, int flags);
 int socketioctl(struct socket *, int, void *);
+
+// pmm.c
+void pmminit(void);

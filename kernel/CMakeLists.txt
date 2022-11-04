@@ -105,6 +105,7 @@ add_executable(kernel
         picirq.c
         pipe.c
         proc.c
+        pmm.c
         sleeplock.c
         spinlock.c
         string.c
@@ -118,7 +119,7 @@ add_executable(kernel
         uart.c
         vfs.c
         virtio_nic.c
-        vm.c)
+        vmm.c)
 
 add_subdirectory(lib)
 
