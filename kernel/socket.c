@@ -71,13 +71,18 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 	socket->file = file;
 
 	netbegin_op();
-	if (type == SOCK_STREAM)
+
+	if (protocol == IPPROTO_TCP)
 	{
 		socket->pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
 	}
-	else
+	else if (protocol == IPPROTO_UDP)
 	{
 		socket->pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+	}
+	else
+	{
+		*err = -EPROTONOSUPPORT;
 	}
 
 	tcp_arg(socket->pcb, socket);
@@ -131,6 +136,8 @@ void socketclose(socket_t *skt)
 	wakeup(&skt->recv_chan);
 	wakeup(&skt->accept_chan);
 
+	skt->wakeup_retcode = -ECONNRESET;
+
 	fileclose(skt->file);
 
 	kmem_cache_free(socket_cache, skt);
@@ -179,6 +186,11 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 	{
 		return 0;
 	}
+	else if (err == ERR_USE)
+	{
+		return -EADDRINUSE;
+	}
+
 	return -EINVAL;
 }
 
@@ -301,7 +313,7 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 		{
 			if (skt->recv_closed)
 			{
-				return -EINVAL; // FIXME
+				return -ECONNRESET;
 			}
 			return -EAGAIN;
 		}
@@ -312,7 +324,7 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 		{
 			if (skt->recv_closed)
 			{
-				return -EINVAL; // FIXME
+				return -ECONNRESET;
 			}
 			acquire(&skt->lock);
 			sleep(&skt->recv_chan, &skt->lock);
@@ -347,7 +359,7 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
 	if (!pcb)
 	{
-		return -EINVAL;
+		return -ECONNRESET;
 	}
 
 	if (!pcb->snd_buf)
@@ -361,9 +373,13 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 	err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
 	netend_op();
 
-	if (err != ERR_OK)
+	if (err == ERR_MEM)
 	{
-		return -EINVAL; //FIXME
+		return -ENOMEM;
+	}
+	else if (err != ERR_OK)
+	{
+		return -ECONNABORTED;
 	}
 
 	err = tcp_output(pcb);
@@ -377,7 +393,7 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 		return -EAGAIN;
 	}
 
-	return -EINVAL; // FIXME
+	return -ECONNABORTED;
 }
 
 int socketioctl(socket_t *skt, int req, void *arg)
@@ -458,6 +474,15 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		wakeup(&socket->recv_chan);
 		return ERR_OK;
 	case LWIP_EVENT_CONNECTED:
+		if (err != ERR_OK)
+		{
+			socket->wakeup_retcode = -ECONNRESET;
+		}
+		else
+		{
+			socket->wakeup_retcode = 0;
+		}
+
 		wakeup(&socket->connect_chan);
 		return ERR_OK;
 	case LWIP_EVENT_POLL:
