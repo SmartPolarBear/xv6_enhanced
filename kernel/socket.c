@@ -132,11 +132,11 @@ void socketclose(socket_t *skt)
 		}
 	}
 
+	skt->wakeup_retcode = -ECONNRESET;
+
 	wakeup(&skt->connect_chan);
 	wakeup(&skt->recv_chan);
 	wakeup(&skt->accept_chan);
-
-	skt->wakeup_retcode = -ECONNRESET;
 
 	fileclose(skt->file);
 
@@ -159,8 +159,14 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 	if (e == ERR_OK)
 	{
 		acquire(&skt->lock);
+		skt->wakeup_retcode = 0;
 		sleep(&skt->connect_chan, &skt->lock);
 		release(&skt->lock);
+
+		if (skt->wakeup_retcode != 0)
+		{
+			return skt->wakeup_retcode;
+		}
 
 		return 0;
 	}
@@ -260,8 +266,15 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 
 			if (avail >= SOCKET_NBACKLOG)
 			{
+				skt->wakeup_retcode = 0;
 				sleep(&skt->accept_chan, &skt->lock);
 				release(&skt->lock);
+
+				if (skt->wakeup_retcode != 0)
+				{
+					*err = skt->wakeup_retcode;
+					return NULL;
+				}
 			}
 		}
 	}
@@ -327,8 +340,14 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 				return -ECONNRESET;
 			}
 			acquire(&skt->lock);
+			skt->wakeup_retcode = 0;
 			sleep(&skt->recv_chan, &skt->lock);
 			release(&skt->lock);
+
+			if (skt->wakeup_retcode != 0)
+			{
+				return skt->wakeup_retcode;
+			}
 		}
 	}
 	netbegin_op();
@@ -439,6 +458,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 
 			socket->backlog[free] = newsocket;
 
+			socket->wakeup_retcode = 0;
 			wakeup(&socket->accept_chan);
 		}
 		return ERR_OK;
@@ -471,6 +491,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		socket->recv_buf = p;
 		socket->recv_offset = 0;
 
+		socket->wakeup_retcode = 0;
 		wakeup(&socket->recv_chan);
 		return ERR_OK;
 	case LWIP_EVENT_CONNECTED:
