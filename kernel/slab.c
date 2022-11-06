@@ -239,14 +239,14 @@ void kmem_cache_free(kmem_cache_t *cache, void *obj)
 {
 	KDEBUG_ASSERT(obj);
 
+	acquire(&cache->lock);
+
 	slab_t *slab = slab_find(cache, obj);
 	KDEBUG_ASSERT(slab);
 
 	acquire(&slab->lock);
 
 	size_t index = (obj - slab->objects) / cache->obj_size;
-
-	acquire(&cache->lock);
 
 	list_del(&slab->link);
 
@@ -266,6 +266,9 @@ void kmem_cache_free(kmem_cache_t *cache, void *obj)
 	{
 		list_add(&slab->link, &cache->full);
 	}
+
+	release(&slab->lock);
+	release(&cache->lock);
 }
 
 size_t kmem_cache_shrink(kmem_cache_t *cache)

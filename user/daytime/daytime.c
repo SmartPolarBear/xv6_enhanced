@@ -16,7 +16,7 @@ int main(int argc, char **argv)
 	struct hostent *hp;
 	int sockfd, r;
 	struct sockaddr_in addr = {
-		.sin_family = PF_INET, .sin_port = hton16(SERVER_PORT),
+		.sin_family = PF_INET, .sin_port = 13// hton16(SERVER_PORT),
 	};
 
 	addr.sin_addr.addr = 0x2c8c8a80;
@@ -35,7 +35,6 @@ int main(int argc, char **argv)
 		ssize_t n;
 
 		n = recv(sockfd, buf, sizeof(buf));
-		printf(1, "received");
 
 		if (n <= 0)
 		{
@@ -45,7 +44,6 @@ int main(int argc, char **argv)
 	}
 
 	close(sockfd);
-	printf(1, "closed");
 
 	return 0;
 }

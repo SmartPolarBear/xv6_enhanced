@@ -138,8 +138,6 @@ void socketclose(socket_t *skt)
 	wakeup(&skt->recv_chan);
 	wakeup(&skt->accept_chan);
 
-	fileclose(skt->file);
-
 	kmem_cache_free(socket_cache, skt);
 }
 
@@ -512,7 +510,7 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 	case LWIP_EVENT_ERR:
 		/* pcb is already deallocated */
 		socket->pcb = NULL;
-		socketclose(socket);
+		// do nothing. de-allocation will be done by exit() or manually by the user
 		return ERR_ABRT;
 	default:
 		break;
