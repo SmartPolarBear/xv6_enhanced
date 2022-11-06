@@ -21,6 +21,12 @@
 
 kmem_cache_t *socket_cache;
 
+static inline void addrin_byteswap(struct sockaddr_in *addr)
+{
+	addr->sin_port = byteswap16(addr->sin_port);
+	addr->sin_addr.addr = byteswap32(addr->sin_addr.addr);
+}
+
 void socketinit(void)
 {
 	socket_cache = kmem_cache_create("socket_cache", sizeof(socket_t), 0);
@@ -149,6 +155,8 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 		return -EINVAL;
 	}
 
+	addrin_byteswap(addr_in);
+
 	netbegin_op();
 	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
 	err_t e = tcp_connect(pcb, &addr_in->sin_addr, addr_in->sin_port, NULL);
@@ -175,6 +183,7 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 {
 	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
+	addrin_byteswap(addr_in);
 
 	if (skt->protocol != IPPROTO_TCP)
 	{
@@ -294,6 +303,8 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	struct tcp_pcb *newpcb = socket->pcb;
 
 	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
+	addrin_byteswap(in_addr);
+
 	in_addr->sin_addr = newpcb->remote_ip;
 	in_addr->sin_port = newpcb->remote_port;
 	in_addr->sin_family = AF_INET;

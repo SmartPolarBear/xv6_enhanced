@@ -9,6 +9,7 @@
 /* RFC 867: Daytime Protocol */
 #define SERVER_HOST "utcnist.colorado.edu"
 #define SERVER_PORT 13
+#define SERVER_HOSTIP 0x2c8c8a80
 char buf[512];
 
 int main(int argc, char **argv)
@@ -16,12 +17,10 @@ int main(int argc, char **argv)
 	struct hostent *hp;
 	int sockfd, r;
 	struct sockaddr_in addr = {
-		.sin_family = PF_INET, .sin_port = 13// hton16(SERVER_PORT),
+		.sin_family = PF_INET, .sin_port =  hton16(SERVER_PORT),
 	};
 
-	addr.sin_addr.addr = 0x2c8c8a80;
-
-
+	addr.sin_addr.addr = hton32(SERVER_HOSTIP);
 
 	sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -37,12 +36,12 @@ int main(int argc, char **argv)
 		ssize_t n;
 
 		n = recv(sockfd, buf, sizeof(buf));
-
 		if (n <= 0)
 		{
 			break;
 		}
-		write(1, buf, n);
+
+		write(1, buf, n); // stdout
 	}
 
 	close(sockfd);
