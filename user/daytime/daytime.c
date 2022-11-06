@@ -21,6 +21,8 @@ int main(int argc, char **argv)
 
 	addr.sin_addr.addr = 0x2c8c8a80;
 
+
+
 	sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 	r = connect(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
