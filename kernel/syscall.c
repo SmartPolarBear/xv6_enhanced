@@ -136,6 +136,11 @@ extern int sys_recv(void);
 extern int sys_send(void);
 extern int sys_recvfrom(void);
 extern int sys_sendto(void);
+extern int sys_getsockopt(void);
+
+// sysnetdb.c
+extern int sys_gethostbyname(void);
+extern int sys_gethostbyaddr(void);
 
 static int (*syscalls[])(void) = {
 	[SYS_fork]    = sys_fork,
@@ -176,6 +181,9 @@ static int (*syscalls[])(void) = {
 	[SYS_recvfrom] =sys_recvfrom,
 	[SYS_sendto]   =sys_sendto,
 	[SYS_error]    =sys_error,
+	[SYS_getsockopt]=sys_getsockopt,
+	[SYS_gethostbyname]=sys_gethostbyname,
+	[SYS_gethostbyaddr]=sys_gethostbyaddr,
 };
 
 void

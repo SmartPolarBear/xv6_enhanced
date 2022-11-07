@@ -101,6 +101,7 @@ add_executable(kernel
         mp.c
         memory.c
         net.c
+        netdb.c
         pci.c
         picirq.c
         pipe.c
@@ -115,6 +116,7 @@ add_executable(kernel
         sysfile.c
         sysproc.c
         syssocket.c
+        sysnetdb.c
         trap.c
         uart.c
         vfs.c

@@ -39,3 +39,6 @@
 #define SYS_recvfrom 35
 #define SYS_sendto   36
 #define SYS_error    37
+#define SYS_getsockopt 38
+#define SYS_gethostbyname 39
+#define SYS_gethostbyaddr 40

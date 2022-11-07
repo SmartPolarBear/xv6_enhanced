@@ -242,3 +242,8 @@ sys_sendto(void)
 //	return socketsendto(f->socket, p, n, addr, addrlen);
 	return -1;
 }
+
+int sys_getsockopt(void)
+{
+	return 0;
+}

@@ -429,6 +429,21 @@ int socketioctl(socket_t *skt, int req, void *arg)
 	return 0;
 }
 
+int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *optlen)
+{
+	return 0;
+}
+
+int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen)
+{
+	return -EINVAL;
+}
+
+int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen)
+{
+	return -EINVAL;
+}
+
 err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
 					 u16_t size, err_t err)
 {
