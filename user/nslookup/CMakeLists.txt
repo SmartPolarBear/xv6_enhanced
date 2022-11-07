@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_executable(_ping ping.c)
+add_executable(_nslookup nslookup.c)
 
-add_dependencies(_ping ulib)
+add_dependencies(_nslookup ulib)
 
-target_link_libraries(_ping ulib)
+target_link_libraries(_nslookup ulib)
 
-target_compile_options(_ping BEFORE
+target_compile_options(_nslookup BEFORE
         PRIVATE -fno-pic
         PRIVATE -static
         PRIVATE -fno-builtin
@@ -19,7 +19,7 @@ target_compile_options(_ping BEFORE
         PRIVATE -fno-stack-protector
         PRIVATE -fno-omit-frame-pointer)
 
-target_link_options(_ping BEFORE
+target_link_options(_nslookup BEFORE
         PRIVATE -m32
         PRIVATE -nostdlib
         PRIVATE -static
@@ -27,9 +27,9 @@ target_link_options(_ping BEFORE
         PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld)
 
 
-add_custom_command(TARGET _ping POST_BUILD
-        COMMAND objdump -S $<TARGET_FILE:_ping> > ${CMAKE_CURRENT_BINARY_DIR}/mkdir.asm
-        COMMAND objdump -t $<TARGET_FILE:_ping> > ${CMAKE_CURRENT_BINARY_DIR}/mkdir.sym
+add_custom_command(TARGET _nslookup POST_BUILD
+        COMMAND objdump -S $<TARGET_FILE:_nslookup> > ${CMAKE_CURRENT_BINARY_DIR}/mkdir.asm
+        COMMAND objdump -t $<TARGET_FILE:_nslookup> > ${CMAKE_CURRENT_BINARY_DIR}/mkdir.sym
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
