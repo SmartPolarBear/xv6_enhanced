@@ -63,7 +63,8 @@ add_custom_target(fs_img ALL
         $<TARGET_FILE:_ping>
         $<TARGET_FILE:_traceroute>
         $<TARGET_FILE:_nslookup>
-    DEPENDS mkfs _cat _echo _forktest _grep _init _kill _ln _ls _mkdir _rm _sh _stressfs _tcpecho _daytime _usertests _wc _zombie _udpecho _httpget _ping _traceroute _nslookup _waittest _div0 _alarmhello
+        $<TARGET_FILE:_daytime>
+    DEPENDS mkfs _cat _echo _forktest _grep _init _kill _ln _ls _mkdir _rm _sh _stressfs _tcpecho _daytime _usertests _wc _zombie _daytime _udpecho _httpget _ping _traceroute _nslookup _waittest _div0 _alarmhello
     BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/fs.img
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating fs.img ramdisk")
