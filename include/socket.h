@@ -13,7 +13,7 @@
 #else
 typedef struct ip4_addr
 {
-	uint32 addr;
+	uint32 s_addr;
 } ip4_addr_t;
 
 typedef ip4_addr_t ip_addr_t;
@@ -48,11 +48,13 @@ typedef struct socket
 
 #define SOCK_STREAM 1
 #define SOCK_DGRAM  2
+#define SOCK_RAW    3
 
 #define IPPROTO_TCP 0
 #define IPPROTO_UDP 1
+#define IPPROTO_ICMP 2
 
-#define INADDR_ANY 0
+#define INADDR_ANY ((ip_addr_t){.s_addr=0})
 
 typedef struct sockaddr
 {

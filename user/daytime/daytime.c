@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 		.sin_family = PF_INET, .sin_port =  hton16(SERVER_PORT),
 	};
 
-	addr.sin_addr.addr = hton32(SERVER_HOSTIP);
+	addr.sin_addr.s_addr = hton32(SERVER_HOSTIP);
 
 	sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
