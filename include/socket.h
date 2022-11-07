@@ -26,6 +26,13 @@ typedef struct socket
 	struct pbuf *recv_buf;
 	int recv_offset;
 	int recv_closed;
+	// for udp recvfrom
+	struct
+	{
+		struct sockaddr *recv_addr;
+		int *recv_addrlen;
+		int recv_len;
+	} udp_recvfrom;
 	struct socket *backlog[SOCKET_NBACKLOG];
 	int protocol;
 	int type;
@@ -55,6 +62,8 @@ typedef struct socket
 #define IPPROTO_ICMP 2
 
 #define INADDR_ANY ((ip_addr_t){.s_addr=0})
+
+#define SO_TYPE 0x1008
 
 typedef struct sockaddr
 {

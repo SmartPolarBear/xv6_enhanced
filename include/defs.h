@@ -17,6 +17,7 @@ struct netdev;
 struct netcard_opts;
 struct socket;
 struct sockaddr;
+struct hostent;
 
 // bio.c
 void binit(void);
@@ -243,6 +244,10 @@ struct netdev *find_card_by_name(char *name);
 void netbegin_op();
 void netend_op();
 
+// netdb.c
+struct hostent *gethostbyname(const char *name);
+struct hostent *gethostbyaddr(const char *addr, int len, int type);
+
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);
 
@@ -261,6 +266,9 @@ struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrle
 int socketrecv(struct socket *skt, char *buf, int len, int flags);
 int socketsend(struct socket *skt, char *buf, int len, int flags);
 int socketioctl(struct socket *, int, void *);
+int socketsendto(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen);
+int socketrecvfrom(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen);
+int socketgetsockopt(struct socket *skt, int level, int optname, void *optval, int *optlen);
 
 // pmm.c
 void pmminit(void);

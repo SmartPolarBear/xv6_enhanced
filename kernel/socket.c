@@ -19,6 +19,9 @@
 #include "lwip/tcp.h"
 #include "lwip/udp.h"
 
+void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
+							const ip_addr_t *addr, u16_t port);
+
 kmem_cache_t *socket_cache;
 
 static inline void addrin_byteswap(struct sockaddr_in *addr)
@@ -122,6 +125,7 @@ void socketclose(socket_t *skt)
 		}
 		else
 		{
+			udp_disconnect(skt->pcb);
 			udp_remove(skt->pcb);
 		}
 		tcp_close(skt->pcb); // ? why twice?
@@ -431,17 +435,178 @@ int socketioctl(socket_t *skt, int req, void *arg)
 
 int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *optlen)
 {
-	return 0;
+	switch (skt->type)
+	{
+	case IPPROTO_TCP:
+		switch (optname)
+		{
+		case SO_TYPE:
+			*(int *)optval = SOCK_STREAM;
+			*optlen = sizeof(int);
+			return 0;
+		}
+		break;
+	case IPPROTO_UDP:
+		switch (optname)
+		{
+		case SO_TYPE:
+			*(int *)optval = SOCK_STREAM;
+			*optlen = sizeof(int);
+			return 0;
+		}
+		break;
+	}
+	return -EINVAL;
 }
 
 int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen)
 {
+	if (skt->protocol != IPPROTO_UDP)
+	{
+		if (addr)
+		{
+			return -EISCONN;
+		}
+
+		// as stated in the document, it will have the same effect as send()
+		return socketsend(skt, buf, len, flags);
+	}
+
+	if (addr == NULL)
+	{
+		return -EDESTADDRREQ;
+	}
+
+	if (addrlen < sizeof(struct sockaddr_in))
+	{
+		return -EINVAL;
+	}
+
+	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
+	addrin_byteswap(in_addr);
+
+	if (in_addr->sin_family != AF_INET)
+	{
+		return -EAFNOSUPPORT;
+	}
+
+	struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
+	if (!pcb)
+	{
+		return -ECONNRESET;
+	}
+
+	netbegin_op();
+
+	struct pbuf *pb = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+	if (!pb)
+	{
+		netend_op();
+		return -ENOMEM;
+	}
+
+	err_t err = pbuf_take(pb, buf, len);
+	if (err != ERR_OK)
+	{
+		pbuf_free(pb);
+		netend_op();
+		return -ENOMEM;
+	}
+
+	err = udp_sendto(pcb, pb, &in_addr->sin_addr, in_addr->sin_port);
+	if (err != ERR_OK)
+	{
+		pbuf_free(pb);
+		netend_op();
+		return -ECONNABORTED;
+	}
+
+	pbuf_free(pb);
+	netend_op();
+
 	return -EINVAL;
 }
 
 int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen)
 {
-	return -EINVAL;
+	if (skt->protocol != IPPROTO_UDP)
+	{
+		if (addr)
+		{
+			return -EISCONN;
+		}
+
+		// as stated in the document, it will have the same effect as recv()
+		return socketrecv(skt, buf, len, flags);
+	}
+
+	if (addr == NULL)
+	{
+		return -EDESTADDRREQ;
+	}
+
+	if (addrlen && *addrlen < sizeof(struct sockaddr_in))
+	{
+		return -EINVAL;
+	}
+
+	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
+	addrin_byteswap(in_addr);
+
+	if (in_addr->sin_family != AF_INET)
+	{
+		return -EAFNOSUPPORT;
+	}
+
+	skt->udp_recvfrom.recv_addr = addr;
+	skt->udp_recvfrom.recv_addrlen = addrlen;
+	skt->udp_recvfrom.recv_len = len;
+
+	struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
+	if (!pcb)
+	{
+		return -ECONNRESET;
+	}
+
+	netbegin_op();
+	udp_recv(pcb, lwip_udp_recv_callback, skt);
+	netend_op();
+
+	if (skt->recv_buf == NULL)
+	{
+//		if (flags & MSG_DONTWAIT)
+//		{
+//			return -EAGAIN;
+//		}
+
+		acquire(&skt->lock);
+		skt->wakeup_retcode = 0;
+		sleep(&skt->recv_chan, &skt->lock);
+		release(&skt->lock);
+
+		if (skt->wakeup_retcode != 0)
+		{
+			return skt->wakeup_retcode;
+		}
+	}
+
+	netbegin_op();
+
+	len = pbuf_copy_partial(skt->recv_buf, buf, len, skt->recv_offset);
+	skt->recv_offset += len;
+	KDEBUG_ASSERT(skt->recv_offset <= skt->recv_buf->tot_len);
+
+	if (skt->recv_offset == skt->recv_buf->tot_len)
+	{
+		pbuf_free(skt->recv_buf);
+		skt->recv_buf = NULL;
+		skt->recv_offset = 0;
+		memset(&skt->udp_recvfrom, 0, sizeof(skt->udp_recvfrom));
+	}
+
+	netend_op();
+
+	return len;
 }
 
 err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
@@ -544,3 +709,43 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 
 	KDEBUG_UNREACHABLE;
 }
+
+void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
+							const ip_addr_t *addr, u16_t port)
+{
+	socket_t *socket = (socket_t *)arg;
+	struct sockaddr_in *sin = (struct sockaddr_in *)&socket->udp_recvfrom.recv_addr;
+	if (sin->sin_addr.addr != addr->addr || sin->sin_port != port)
+	{
+		return;
+	}
+
+	if (!p || p->tot_len > socket->udp_recvfrom.recv_len)
+	{
+		if (p)
+		{
+			netbegin_op();
+			pbuf_free(p);
+			netend_op();
+		}
+		socket->recv_closed = TRUE;
+		return;
+	}
+	// buffer hasn't been received
+	if (socket->recv_buf)
+	{
+		return;
+	}
+	/* ack the packet */
+	netbegin_op();
+	tcp_recved(socket->pcb, p->tot_len);
+	netend_op();
+
+	socket->recv_buf = p;
+	socket->recv_offset = 0;
+
+	socket->wakeup_retcode = 0;
+	wakeup(&socket->recv_chan);
+}
+
+
