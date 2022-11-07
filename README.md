@@ -4,6 +4,19 @@
 
 An enhanced xv6 with some new features like a lwIP-based network stack. 
 
+// TODO
+## Features
+
+### Memory Detection
+
+### Buddy/Slab Memory Allocator
+
+### Network Stack
+
+#### LWIP-based Protocol Stack
+
+#### Socket API
+
 ## Original README
 [See original README file here.](https://github.com/SmartPolarBear/xv6_enhanced/blob/main/README)  
 
