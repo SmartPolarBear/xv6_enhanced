@@ -26,13 +26,24 @@ typedef struct socket
 	struct pbuf *recv_buf;
 	int recv_offset;
 	int recv_closed;
-	// for udp recvfrom
-	struct
+
+	union
 	{
-		struct sockaddr *recv_addr;
-		int *recv_addrlen;
-		int recv_len;
-	} udp_recvfrom;
+		// for udp recvfrom
+		struct
+		{
+			struct sockaddr *recv_addr;
+			int *recv_addrlen;
+			int recv_len;
+		} udp_recvfrom;
+
+		struct
+		{
+			ip_addr_t *addr;
+			int recv_len;
+		} raw_recv;
+	};
+
 	struct socket *backlog[SOCKET_NBACKLOG];
 	int protocol;
 	int type;
@@ -60,6 +71,7 @@ typedef struct socket
 #define IPPROTO_TCP 0
 #define IPPROTO_UDP 1
 #define IPPROTO_ICMP 2
+#define IPPROTO_RAW 3
 
 #define INADDR_ANY ((ip_addr_t){.s_addr=0})
 

@@ -10,6 +10,7 @@
 #define LWIP_DNS 1
 #define LWIP_ETHERNET 1
 #define LWIP_ICMP 1
+#define LWIP_RAW 1
 
 #define LWIP_EVENT_API 1
 #define TCP_LISTEN_BACKLOG 1

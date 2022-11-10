@@ -18,9 +18,13 @@
 #include "socket.h"
 #include "lwip/tcp.h"
 #include "lwip/udp.h"
+#include "lwip/raw.h"
 
 void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 							const ip_addr_t *addr, u16_t port);
+
+u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct pbuf *p,
+							const ip_addr_t *addr);
 
 kmem_cache_t *socket_cache;
 
@@ -53,7 +57,7 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 		return NULL;
 	}
 
-	if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP)
+	if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP && protocol != IPPROTO_RAW)
 	{
 		*err = -EINVAL;
 		return NULL;
@@ -89,6 +93,10 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 	{
 		socket->pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
 	}
+	else if (protocol == IPPROTO_RAW)
+	{
+		socket->pcb = raw_new_ip_type(IPADDR_TYPE_ANY, 0/*only for IPv6*/);
+	}
 	else
 	{
 		*err = -EPROTONOSUPPORT;
@@ -119,16 +127,21 @@ void socketclose(socket_t *skt)
 
 	if (skt->pcb)
 	{
-		if (skt->type == SOCK_STREAM)
+		if (skt->protocol == IPPROTO_TCP)
 		{
 			tcp_close(skt->pcb);
+			tcp_close(skt->pcb); // ? why twice?
 		}
-		else
+		else if (skt->protocol == IPPROTO_UDP)
 		{
 			udp_disconnect(skt->pcb);
 			udp_remove(skt->pcb);
 		}
-		tcp_close(skt->pcb); // ? why twice?
+		else if (skt->protocol == IPPROTO_RAW)
+		{
+			raw_remove(skt->pcb);
+		}
+
 		skt->pcb = NULL;
 	}
 	netend_op();
@@ -154,19 +167,43 @@ void socketclose(socket_t *skt)
 int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 {
 	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
-	if (skt->protocol != IPPROTO_TCP)
+	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
 	{
-		return -EINVAL;
+		return -EPROTONOSUPPORT;
+	}
+
+	if (skt->type != SOCK_STREAM)
+	{
+		return -EOPNOTSUPP;
 	}
 
 	addrin_byteswap(addr_in);
 
 	netbegin_op();
-	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-	err_t e = tcp_connect(pcb, &addr_in->sin_addr, addr_in->sin_port, NULL);
+
+	err_t err = -1;
+	if (skt->protocol == IPPROTO_TCP)
+	{
+		err = tcp_connect(skt->pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port, NULL);
+		if (err != ERR_OK)
+		{
+			netend_op();
+			return -ECONNREFUSED;
+		}
+	}
+	else if (skt->protocol == IPPROTO_RAW)
+	{
+		err = raw_connect(skt->pcb, (ip_addr_t *)&addr_in->sin_addr);
+		if (err != ERR_OK)
+		{
+			netend_op();
+			return -ECONNREFUSED;
+		}
+	}
+
 	netend_op();
 
-	if (e == ERR_OK)
+	if (err == ERR_OK)
 	{
 		acquire(&skt->lock);
 		skt->wakeup_retcode = 0;
@@ -189,14 +226,28 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
 	addrin_byteswap(addr_in);
 
-	if (skt->protocol != IPPROTO_TCP)
+	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
 	{
 		return -EINVAL;
 	}
 
+	if (skt->type != SOCK_STREAM)
+	{
+		return -EOPNOTSUPP;
+	}
+
 	netbegin_op();
-	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-	err_t err = tcp_bind(pcb, &addr_in->sin_addr, addr_in->sin_port);
+	err_t err = -1;
+	if (skt->protocol == IPPROTO_TCP)
+	{
+		struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
+		err = tcp_bind(pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port);
+	}
+	else if (skt->protocol == IPPROTO_RAW)
+	{
+		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
+		err = raw_bind(pcb, (ip_addr_t *)&addr_in->sin_addr);
+	}
 	netend_op();
 
 	if (err == ERR_OK)
@@ -216,6 +267,11 @@ int socketlisten(socket_t *skt, int backlog)
 	if (skt->protocol != IPPROTO_TCP)
 	{
 		return -EINVAL;
+	}
+
+	if (skt->type != SOCK_STREAM)
+	{
+		return -EOPNOTSUPP;
 	}
 
 	netbegin_op();
@@ -240,6 +296,12 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	if (skt->protocol != IPPROTO_TCP)
 	{
 		*err = -EINVAL;
+		return NULL;
+	}
+
+	if (skt->type != SOCK_STREAM)
+	{
+		*err = -EOPNOTSUPP;
 		return NULL;
 	}
 
@@ -323,9 +385,14 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 
 int socketrecv(socket_t *skt, char *buf, int len, int flags)
 {
-	if (skt->protocol != IPPROTO_TCP)
+	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
 	{
-		return -EINVAL;
+		return -EPROTONOSUPPORT;
+	}
+
+	if (skt->type != SOCK_STREAM)
+	{
+		return -EOPNOTSUPP;
 	}
 
 	if (len <= 0)
@@ -346,6 +413,15 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 	}
 	else
 	{
+		if (skt->protocol == IPPROTO_RAW)
+		{
+			skt->raw_recv.recv_len = len;
+			netbegin_op();
+			struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
+			raw_recv(pcb, lwip_raw_recv_callback, skt);
+			netend_op();
+		}
+
 		while (!skt->recv_buf)
 		{
 			if (skt->recv_closed)
@@ -383,47 +459,77 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 
 int socketsend(socket_t *skt, char *buf, int len, int flags)
 {
-	if (skt->protocol != IPPROTO_TCP)
+	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
 	{
-		return -EINVAL;
+		return -EPROTONOSUPPORT;
 	}
 
-	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-	if (!pcb)
+	if (skt->type != SOCK_STREAM)
 	{
-		return -ECONNRESET;
-	}
-
-	if (!pcb->snd_buf)
-	{
-		return -EAGAIN;
+		return -EOPNOTSUPP;
 	}
 
 	netbegin_op();
-	len = MIN(len, pcb->snd_buf);
 
-	err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
+	if (skt->protocol == IPPROTO_TCP)
+	{
+		struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
+		if (!pcb)
+		{
+			return -ECONNRESET;
+		}
+
+		if (!pcb->snd_buf)
+		{
+			return -EAGAIN;
+		}
+
+		len = MIN(len, pcb->snd_buf);
+		err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
+
+		if (err == ERR_MEM)
+		{
+			return -ENOMEM;
+		}
+		else if (err != ERR_OK)
+		{
+			return -ECONNABORTED;
+		}
+
+		err = tcp_output(pcb);
+		if (err == ERR_OK)
+		{
+			return len;
+		}
+
+		if (err == ERR_MEM)
+		{
+			return -EAGAIN;
+		}
+	}
+	else if (skt->protocol == IPPROTO_RAW)
+	{
+		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
+		struct pbuf *pb = pbuf_alloc(PBUF_IP, len, PBUF_RAM);
+		err_t err = pbuf_take(pb, buf, len);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ENOMEM;
+		}
+
+		err = raw_send(pcb, pb);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ECONNABORTED;
+		}
+
+		pbuf_free(pb);
+	}
 	netend_op();
-
-	if (err == ERR_MEM)
-	{
-		return -ENOMEM;
-	}
-	else if (err != ERR_OK)
-	{
-		return -ECONNABORTED;
-	}
-
-	err = tcp_output(pcb);
-	if (err == ERR_OK)
-	{
-		return len;
-	}
-
-	if (err == ERR_MEM)
-	{
-		return -EAGAIN;
-	}
 
 	return -ECONNABORTED;
 }
@@ -461,7 +567,7 @@ int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *o
 
 int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen)
 {
-	if (skt->protocol != IPPROTO_UDP)
+	if (skt->protocol != IPPROTO_UDP && skt->protocol != IPPROTO_RAW)
 	{
 		if (addr)
 		{
@@ -490,38 +596,63 @@ int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *
 		return -EAFNOSUPPORT;
 	}
 
-	struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
-	if (!pcb)
-	{
-		return -ECONNRESET;
-	}
-
 	netbegin_op();
 
-	struct pbuf *pb = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
-	if (!pb)
+	if (skt->protocol == IPPROTO_UDP)
 	{
-		netend_op();
-		return -ENOMEM;
-	}
+		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
+		if (!pcb)
+		{
+			return -ECONNRESET;
+		}
+		struct pbuf *pb = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
+		if (!pb)
+		{
+			netend_op();
+			return -ENOMEM;
+		}
 
-	err_t err = pbuf_take(pb, buf, len);
-	if (err != ERR_OK)
-	{
+		err_t err = pbuf_take(pb, buf, len);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ENOMEM;
+		}
+
+		err = udp_sendto(pcb, pb, &in_addr->sin_addr, in_addr->sin_port);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ECONNABORTED;
+		}
+
 		pbuf_free(pb);
-		netend_op();
-		return -ENOMEM;
 	}
-
-	err = udp_sendto(pcb, pb, &in_addr->sin_addr, in_addr->sin_port);
-	if (err != ERR_OK)
+	else if (skt->protocol == IPPROTO_RAW)
 	{
+		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
+		struct pbuf *pb = pbuf_alloc(PBUF_IP, len, PBUF_RAM);
+		err_t err = pbuf_take(pb, buf, len);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ENOMEM;
+		}
+
+		err = raw_sendto(pcb, pb, &in_addr->sin_addr);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ECONNABORTED;
+		}
+
 		pbuf_free(pb);
-		netend_op();
-		return -ECONNABORTED;
 	}
 
-	pbuf_free(pb);
 	netend_op();
 
 	return -EINVAL;
@@ -538,6 +669,11 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 
 		// as stated in the document, it will have the same effect as recv()
 		return socketrecv(skt, buf, len, flags);
+	}
+
+	if (skt->type != SOCK_DGRAM)
+	{
+		return -EOPNOTSUPP;
 	}
 
 	if (addr == NULL)
@@ -601,7 +737,14 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 		pbuf_free(skt->recv_buf);
 		skt->recv_buf = NULL;
 		skt->recv_offset = 0;
-		memset(&skt->udp_recvfrom, 0, sizeof(skt->udp_recvfrom));
+		if (skt->protocol == IPPROTO_UDP)
+		{
+			memset(&skt->udp_recvfrom, 0, sizeof(skt->udp_recvfrom));
+		}
+		else if (skt->protocol == IPPROTO_RAW)
+		{
+			memset(&skt->raw_recv, 0, sizeof(skt->udp_recvfrom));
+		}
 	}
 
 	netend_op();
@@ -736,10 +879,6 @@ void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 	{
 		return;
 	}
-	/* ack the packet */
-	netbegin_op();
-	tcp_recved(socket->pcb, p->tot_len);
-	netend_op();
 
 	socket->recv_buf = p;
 	socket->recv_offset = 0;
@@ -748,4 +887,39 @@ void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 	wakeup(&socket->recv_chan);
 }
 
+u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct pbuf *p,
+							const ip_addr_t *addr)
+{
+	socket_t *socket = (socket_t *)arg;
+	struct sockaddr_in *sin = (struct sockaddr_in *)&socket->udp_recvfrom.recv_addr;
+	if (sin->sin_addr.addr != addr->addr)
+	{
+		return 0;
+	}
 
+	if (!p || p->tot_len > socket->raw_recv.recv_len)
+	{
+		if (p)
+		{
+			netbegin_op();
+			pbuf_free(p);
+			netend_op();
+		}
+		socket->recv_closed = TRUE;
+		return 0;
+	}
+	// buffer hasn't been received
+	if (socket->recv_buf)
+	{
+		return 0;
+	}
+
+
+	socket->recv_buf = p;
+	socket->recv_offset = 0;
+
+	socket->wakeup_retcode = 0;
+	wakeup(&socket->recv_chan);
+
+	return p->tot_len;
+}

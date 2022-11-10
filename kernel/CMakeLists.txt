@@ -109,7 +109,6 @@ add_executable(kernel
         string.c
         slab.c
         syscall.c
-        net/socket.c
         sysfile.c
         sysproc.c
         trap.c
