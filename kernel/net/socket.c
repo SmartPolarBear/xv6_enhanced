@@ -226,12 +226,14 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
 	addrin_byteswap(addr_in);
 
-	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
+	if (skt->protocol != IPPROTO_TCP &&
+		skt->protocol != IPPROTO_UDP &&
+		skt->protocol != IPPROTO_RAW)
 	{
 		return -EINVAL;
 	}
 
-	if (skt->type != SOCK_STREAM)
+	if (skt->type != SOCK_STREAM && skt->type != SOCK_DGRAM)
 	{
 		return -EOPNOTSUPP;
 	}
@@ -242,6 +244,11 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 	{
 		struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
 		err = tcp_bind(pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port);
+	}
+	else if (skt->protocol == IPPROTO_UDP)
+	{
+		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
+		err = udp_bind(pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port);
 	}
 	else if (skt->protocol == IPPROTO_RAW)
 	{
@@ -913,7 +920,6 @@ u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct pbuf *p,
 	{
 		return 0;
 	}
-
 
 	socket->recv_buf = p;
 	socket->recv_offset = 0;
