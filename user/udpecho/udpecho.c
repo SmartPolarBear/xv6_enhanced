@@ -45,7 +45,7 @@ main(int argc, char *argv[])
 		}
 		addr = (unsigned char *)&peer.sin_addr;
 		printf(1,
-			   "recvfrom_params: %d bytes data received, peer=%d.%d.%d.%d:%d\n",
+			   "recvfrom: %d bytes data received, peer=%d.%d.%d.%d:%d\n",
 			   ret,
 			   addr[0],
 			   addr[1],

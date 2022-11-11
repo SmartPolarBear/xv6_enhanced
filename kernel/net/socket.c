@@ -522,6 +522,35 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 		// error condition
 		netend_op();
 	}
+	else if (skt->protocol == IPPROTO_UDP)
+	{
+		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
+		if (!pcb)
+		{
+			return -ECONNRESET;
+		}
+
+		netbegin_op();
+		struct pbuf *pb = pbuf_alloc(PBUF_IP, len, PBUF_RAM);
+		err_t err = pbuf_take(pb, buf, len);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ENOMEM;
+		}
+
+		err = udp_send(pcb, pb);
+		if (err != ERR_OK)
+		{
+			pbuf_free(pb);
+			netend_op();
+			return -ECONNABORTED;
+		}
+
+		pbuf_free(pb);
+		netend_op();
+	}
 	else if (skt->protocol == IPPROTO_RAW)
 	{
 		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
@@ -604,7 +633,7 @@ int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *
 		return -EDESTADDRREQ;
 	}
 
-	if (addrlen < sizeof(struct sockaddr_in))
+	if (addrlen != sizeof(struct sockaddr_in))
 	{
 		return -EINVAL;
 	}
@@ -754,6 +783,7 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 
 		memmove(addr, &skt->recvfrom_params.recv_addr, sizeof(struct sockaddr_in));
 		*addrlen = sizeof(struct sockaddr_in);
+		addrin_byteswap((struct sockaddr_in *)addr);
 
 		memset(&skt->recvfrom_params, 0, sizeof(skt->recvfrom_params));
 	}
