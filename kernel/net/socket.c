@@ -476,8 +476,6 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 		return -EOPNOTSUPP;
 	}
 
-	netbegin_op();
-
 	if (skt->protocol == IPPROTO_TCP)
 	{
 		struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
@@ -491,32 +489,48 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 			return -EAGAIN;
 		}
 
+		netbegin_op();
+
 		len = MIN(len, pcb->snd_buf);
 		err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
 
 		if (err == ERR_MEM)
 		{
+			netend_op();
 			return -ENOMEM;
 		}
 		else if (err != ERR_OK)
 		{
+			netend_op();
 			return -ECONNABORTED;
 		}
 
 		err = tcp_output(pcb);
 		if (err == ERR_OK)
 		{
-			return len;
+			netend_op();
+			return len; // succeeded
 		}
 
 		if (err == ERR_MEM)
 		{
+			netend_op();
 			return -EAGAIN;
 		}
+
+
+		// error condition
+		netend_op();
 	}
 	else if (skt->protocol == IPPROTO_RAW)
 	{
 		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
+		if (!pcb)
+		{
+			return -ECONNRESET;
+		}
+
+		netbegin_op();
 		struct pbuf *pb = pbuf_alloc(PBUF_IP, len, PBUF_RAM);
 		err_t err = pbuf_take(pb, buf, len);
 		if (err != ERR_OK)
@@ -535,8 +549,8 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 		}
 
 		pbuf_free(pb);
+		netend_op();
 	}
-	netend_op();
 
 	return -ECONNABORTED;
 }
