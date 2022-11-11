@@ -31,7 +31,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 	addr = (unsigned char *)&self.sin_addr;
-	printf(1, "bind: success, self=%d.%d.%d.%d:%d\n", addr[0], addr[1], addr[2], addr[3], ntoh16(self.sin_port));
+	printf(1, "bind: success, self=%d.%d.%d.%d:%d\n", addr[3], addr[2], addr[1], addr[0], ntoh16(self.sin_port));
 	printf(1, "waiting for message...\n");
 	while (1)
 	{
@@ -47,10 +47,10 @@ main(int argc, char *argv[])
 		printf(1,
 			   "recvfrom: %d bytes data received, peer=%d.%d.%d.%d:%d\n",
 			   ret,
-			   addr[0],
-			   addr[1],
-			   addr[2],
 			   addr[3],
+			   addr[2],
+			   addr[1],
+			   addr[0],
 			   ntoh16(peer.sin_port));
 		hexdump(buf, ret);
 		sendto(soc, buf, ret, 0, (struct sockaddr *)&peer, peerlen);

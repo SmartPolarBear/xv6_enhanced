@@ -166,7 +166,6 @@ void socketclose(socket_t *skt)
 
 int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 {
-	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
 	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
 	{
 		return -EPROTONOSUPPORT;
@@ -177,6 +176,7 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 		return -EOPNOTSUPP;
 	}
 
+	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
 	addrin_byteswap(addr_in);
 
 	netbegin_op();
@@ -376,11 +376,10 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	struct tcp_pcb *newpcb = socket->pcb;
 
 	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
-	addrin_byteswap(in_addr);
-
 	in_addr->sin_addr = newpcb->remote_ip;
 	in_addr->sin_port = newpcb->remote_port;
 	in_addr->sin_family = AF_INET;
+	addrin_byteswap(in_addr);
 
 	*addrlen = sizeof(struct sockaddr_in);
 
