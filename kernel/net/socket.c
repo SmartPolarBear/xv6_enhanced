@@ -422,7 +422,7 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 	{
 		if (skt->protocol == IPPROTO_RAW)
 		{
-			skt->raw_recv.recv_len = len;
+			skt->recvfrom_params.recv_len = len;
 			netbegin_op();
 			struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
 			raw_recv(pcb, lwip_raw_recv_callback, skt);
@@ -667,7 +667,8 @@ int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *
 
 int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen)
 {
-	if (skt->protocol != IPPROTO_UDP)
+
+	if (skt->type != SOCK_DGRAM)
 	{
 		if (addr)
 		{
@@ -678,42 +679,34 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 		return socketrecv(skt, buf, len, flags);
 	}
 
-	if (skt->type != SOCK_DGRAM)
+	skt->recvfrom_params.recv_len = len;
+
+	if (skt->protocol == IPPROTO_UDP)
 	{
-		return -EOPNOTSUPP;
-	}
 
-	if (addr == NULL)
+		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
+		if (!pcb)
+		{
+			return -ECONNRESET;
+		}
+
+		netbegin_op();
+		udp_recv(pcb, lwip_udp_recv_callback, skt);
+		netend_op();
+	}
+	else if (skt->protocol == IPPROTO_RAW)
 	{
-		return -EDESTADDRREQ;
+
+		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
+		if (!pcb)
+		{
+			return -ECONNRESET;
+		}
+
+		netbegin_op();
+		raw_recv(pcb, lwip_raw_recv_callback, skt);
+		netend_op();
 	}
-
-	if (addrlen && *addrlen < sizeof(struct sockaddr_in))
-	{
-		return -EINVAL;
-	}
-
-	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
-	addrin_byteswap(in_addr);
-
-	if (in_addr->sin_family != AF_INET)
-	{
-		return -EAFNOSUPPORT;
-	}
-
-	skt->udp_recvfrom.recv_addr = addr;
-	skt->udp_recvfrom.recv_addrlen = addrlen;
-	skt->udp_recvfrom.recv_len = len;
-
-	struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
-	if (!pcb)
-	{
-		return -ECONNRESET;
-	}
-
-	netbegin_op();
-	udp_recv(pcb, lwip_udp_recv_callback, skt);
-	netend_op();
 
 	if (skt->recv_buf == NULL)
 	{
@@ -744,14 +737,11 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 		pbuf_free(skt->recv_buf);
 		skt->recv_buf = NULL;
 		skt->recv_offset = 0;
-		if (skt->protocol == IPPROTO_UDP)
-		{
-			memset(&skt->udp_recvfrom, 0, sizeof(skt->udp_recvfrom));
-		}
-		else if (skt->protocol == IPPROTO_RAW)
-		{
-			memset(&skt->raw_recv, 0, sizeof(skt->udp_recvfrom));
-		}
+
+		memmove(addr, &skt->recvfrom_params.recv_addr, sizeof(struct sockaddr_in));
+		*addrlen = sizeof(struct sockaddr_in);
+
+		memset(&skt->recvfrom_params, 0, sizeof(skt->recvfrom_params));
 	}
 
 	netend_op();
@@ -864,13 +854,11 @@ void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 							const ip_addr_t *addr, u16_t port)
 {
 	socket_t *socket = (socket_t *)arg;
-	struct sockaddr_in *sin = (struct sockaddr_in *)&socket->udp_recvfrom.recv_addr;
-	if (sin->sin_addr.addr != addr->addr || sin->sin_port != port)
-	{
-		return;
-	}
+	socket->recvfrom_params.recv_addr.sin_addr.addr = addr->addr;
+	socket->recvfrom_params.recv_addr.sin_port = port;
+	socket->recvfrom_params.recv_addr.sin_family = AF_INET;
 
-	if (!p || p->tot_len > socket->udp_recvfrom.recv_len)
+	if (!p || p->tot_len > socket->recvfrom_params.recv_len)
 	{
 		if (p)
 		{
@@ -898,13 +886,11 @@ u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct pbuf *p,
 							const ip_addr_t *addr)
 {
 	socket_t *socket = (socket_t *)arg;
-	struct sockaddr_in *sin = (struct sockaddr_in *)&socket->udp_recvfrom.recv_addr;
-	if (sin->sin_addr.addr != addr->addr)
-	{
-		return 0;
-	}
+	socket->recvfrom_params.recv_addr.sin_addr.addr = addr->addr;
+	socket->recvfrom_params.recv_addr.sin_port = 0;
+	socket->recvfrom_params.recv_addr.sin_family = AF_INET;
 
-	if (!p || p->tot_len > socket->raw_recv.recv_len)
+	if (!p || p->tot_len > socket->recvfrom_params.recv_len)
 	{
 		if (p)
 		{

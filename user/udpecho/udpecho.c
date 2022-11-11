@@ -36,6 +36,7 @@ main(int argc, char *argv[])
 	while (1)
 	{
 		peerlen = sizeof(peer);
+		memset(&peer, 0, peerlen);
 		ret = recvfrom(soc, buf, sizeof(buf), 0, (struct sockaddr *)&peer, &peerlen);
 		if (ret <= 0)
 		{
@@ -44,7 +45,7 @@ main(int argc, char *argv[])
 		}
 		addr = (unsigned char *)&peer.sin_addr;
 		printf(1,
-			   "recvfrom: %d bytes data received, peer=%d.%d.%d.%d:%d\n",
+			   "recvfrom_params: %d bytes data received, peer=%d.%d.%d.%d:%d\n",
 			   ret,
 			   addr[0],
 			   addr[1],

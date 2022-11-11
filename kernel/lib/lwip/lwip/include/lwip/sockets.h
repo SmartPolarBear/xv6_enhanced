@@ -543,7 +543,7 @@ void lwip_socket_thread_cleanup(void); /* LWIP_NETCONN_SEM_PER_THREAD==1: destro
 #define lwip_listen       listen
 #define lwip_recv         recv
 #define lwip_recvmsg      recvmsg
-#define lwip_recvfrom     recvfrom
+#define lwip_recvfrom     recvfrom_params
 #define lwip_send         send
 #define lwip_sendmsg      sendmsg
 #define lwip_sendto       sendto
@@ -635,7 +635,7 @@ int lwip_inet_pton(int af, const char *src, void *dst);
 /** @ingroup socket */
 #define recvmsg(s,message,flags)                  lwip_recvmsg(s,message,flags)
 /** @ingroup socket */
-#define recvfrom(s,mem,len,flags,from,fromlen)    lwip_recvfrom(s,mem,len,flags,from,fromlen)
+#define recvfrom_params(s,mem,len,flags,from,fromlen)    lwip_recvfrom(s,mem,len,flags,from,fromlen)
 /** @ingroup socket */
 #define send(s,dataptr,size,flags)                lwip_send(s,dataptr,size,flags)
 /** @ingroup socket */

@@ -222,6 +222,7 @@ sys_recvfrom(void)
 	}
 
 	int err = socketrecvfrom(f->socket, p, n, flags, addr, addrlen);
+
 	if (err < 0)
 	{
 		seterror(err);
