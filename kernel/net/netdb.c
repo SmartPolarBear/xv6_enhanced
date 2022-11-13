@@ -20,6 +20,7 @@
 #include "socket.h"
 #include "lwip/tcp.h"
 #include "lwip/udp.h"
+#include "lwip/dns.h"
 
 struct hostent *gethostbyname(const char *name)
 {

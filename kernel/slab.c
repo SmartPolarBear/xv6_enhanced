@@ -55,8 +55,8 @@ static inline slab_t *cache_grow(kmem_cache_t *cache)
 	slab->in_use = 0;
 	slab->bufctl = (kmem_bufctl *)(page + sizeof(slab_t));
 
-	char *obj_start = page + sizeof(slab_t) + cache->obj_count * sizeof(kmem_bufctl) + 16;
-	obj_start = (char *)PGROUNDUP((uint)obj_start);
+	char *obj_start = page + sizeof(slab_t) + cache->obj_count * sizeof(kmem_bufctl);
+	obj_start = (char *)ROUNDUP((uint)obj_start, 16); // if not, device drivers may not work
 
 	slab->objects = obj_start;
 	for (int i = 0; i < cache->obj_count; i++)
