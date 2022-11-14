@@ -31,20 +31,17 @@ int main(int argc, char **argv)
 		exit(-1);
 	}
 
-	while (1)
+	ssize_t n;
+
+	n = recv(sockfd, buf, sizeof(buf));
+	if (n <= 0)
 	{
-		ssize_t n;
-
-		n = recv(sockfd, buf, sizeof(buf));
-		if (n <= 0)
-		{
-			break;
-		}
-
-		write(1, buf, n); // stdout
+		goto end;
 	}
 
-	close(sockfd);
+	write(1, buf, n); // stdout
 
+end:
+	close(sockfd);
 	return 0;
 }

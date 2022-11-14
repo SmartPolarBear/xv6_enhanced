@@ -245,6 +245,7 @@ void netbegin_op();
 void netend_op();
 
 // netdb.c
+void netdbinit(void);
 struct hostent *gethostbyname(const char *name);
 struct hostent *gethostbyaddr(const char *addr, int len, int type);
 

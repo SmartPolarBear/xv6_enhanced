@@ -228,7 +228,6 @@ netinit(void)
 	{
 		panic("netinit: kmem_cache_create");
 	}
-
 }
 
 netdev_t *nic_register(char *name, struct pci_func *pcif, struct netcard_opts *opts, void *prvt)

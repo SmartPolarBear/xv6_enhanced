@@ -30,7 +30,7 @@ main(void)
 	kinit1(end, P2V(4 * 1024 * 1024)); // phys page allocator
 	kvmalloc();      // kernel page table
 	mpinit();        // detect other processors
-	pmminit();		 // physical memory manager
+	pmminit();         // physical memory manager
 	lapicinit();     // interrupt controller
 	seginit();       // segment descriptors
 	picinit();       // disable pic
@@ -48,6 +48,7 @@ main(void)
 	pci_init();      //pci
 	socketinit();    // socket
 	netstart();         // start networking
+	netdbinit();     // dns and rdns query
 	startothers();   // start other processors
 	kinit2(P2V(4 * 1024 * 1024), P2V(PHYSTOP)); // must come after startothers()
 	userinit();      // first user process

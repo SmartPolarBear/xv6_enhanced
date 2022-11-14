@@ -8,7 +8,13 @@
 
 int sys_gethostbyname(void)
 {
-	return 0;
+	char *name = NULL;
+	if (argstr(0, &name) < 0)
+	{
+		return -1;
+	}
+
+	return (int)gethostbyname(name);
 }
 
 int sys_gethostbyaddr(void)
