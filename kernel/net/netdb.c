@@ -22,25 +22,6 @@
 #include "lwip/udp.h"
 #include "lwip/dns.h"
 
-char *netdb_retbuf; // netdb function result buffer of a page's length
-char *netdb_qbuf; // query buffer of a page's length
-int query_scceeded = -1;
-
-spinlock_t netdb_lock;
-
-struct udp_pcb *dns_pcb = NULL;
-
-// google dns
-#define DNS_SERVER 0x08080808
-
-#define DNS_PORT 53
-
-static inline void buf_cleanup()
-{
-	memset(netdb_retbuf, 0, PGSIZE);
-	memset(netdb_qbuf, 0, PGSIZE);
-}
-
 typedef struct
 {
 	uint16 xid;      /* Randomly chosen identifier */
@@ -60,11 +41,11 @@ typedef struct
 
 typedef struct dns_record_header
 {
-	uint16_t compression;
-	uint16_t type;
-	uint16_t class;
-	uint32_t ttl;
-	uint16_t length;
+	uint16 compression;
+	uint16 type;
+	uint16 class;
+	uint32 ttl;
+	uint16 length;
 }__attribute__((packed)) dns_record_header_t;
 
 /* Structure of the bytes for an IPv4 answer */
@@ -83,103 +64,154 @@ typedef struct dns_record_cname
 #define TYPE_A 1
 #define TYPE_CNAME 5
 
-static inline void header_ntoh(dns_record_header_t *h)
+char *netdb_qbuf;
+struct netdb_answer *query_ans;
+
+spinlock_t netdb_lock;
+
+kmem_cache_t *addr_cache;
+kmem_cache_t *name_cache;
+
+struct udp_pcb *dns_pcb = NULL;
+
+// google dns
+#define DNS_SERVER 0x08080808
+#define DNS_PORT 53
+
+static inline void buf_cleanup()
 {
-	h->compression = ntohs(h->compression);
-	h->type = ntohs(h->type);
-	h->class = ntohs(h->class);
-	h->ttl = ntohl(h->ttl);
-	h->length = ntohs(h->length);
+	memset(netdb_qbuf, 0, PGSIZE);
 }
 
-static inline char *parse_dns_name(char *str, char *data)
+static inline netdb_answer_cname_t *alloc_canno_name_answer()
 {
-	uint8_t *start_of_name = (uint8_t *)str;
-	uint8_t total = 0;
-	uint8_t *field_length = start_of_name;
-	while (*field_length != 0 && *field_length != 0xC0)
-	{
-		/* Restore the dot in the name and advance to next length */
-		total += *field_length + 1;
-		*field_length = '.';
-		field_length = start_of_name + total;
-	}
+	netdb_answer_cname_t *answer = kmem_cache_alloc(name_cache);
+	KDEBUG_ASSERT(answer != NULL);
+	memset(answer, 0, sizeof(netdb_answer_cname_t));
+	return answer;
+}
 
-	for (uint8 *p = start_of_name; p <= field_length; p++)
+static inline netdb_answer_alias_t *alloc_alias_answer()
+{
+	netdb_answer_alias_t *answer = kmem_cache_alloc(name_cache);
+	KDEBUG_ASSERT(answer != NULL);
+	memset(answer, 0, sizeof(netdb_answer_alias_t));
+	return answer;
+}
+
+static inline netdb_answer_addr_t *alloc_addr_answer()
+{
+	netdb_answer_addr_t *answer = kmem_cache_alloc(addr_cache);
+	KDEBUG_ASSERT(answer != NULL);
+	memset(answer, 0, sizeof(netdb_answer_addr_t));
+	return answer;
+}
+
+/// decompression dns name
+/// \param dst the result
+/// \param name compressed name
+/// \param ans full response data
+static inline void parse_dns_name(char *dst, char *name, char *ans)
+{
+	int i = 0;
+	int j = 0;
+	int len = 0;
+	int offset = 0;
+	int first = 1;
+	int compressed = 0;
+
+	while (1)
 	{
-		if (((*p) & 0xF0) == 0xC0)
+		len = name[i];
+		if (len == 0)
 		{
-			uint16 offset = ntohs(*((uint16 *)(p))) & 0x0FFF;
-			char *i = data + offset;
-			while (*i)
-			{
-				*p++ = *i++;
-			}
-			*p = 0;
+			break;
 		}
+
+		if (len & 0xc0)
+		{
+			compressed = 1;
+			offset = ((len & 0x3f) << 8) | name[i + 1];
+			i += 2;
+		}
+		else
+		{
+			i++;
+		}
+
+		if (!first)
+		{
+			dst[j++] = '.';
+		}
+
+		if (compressed)
+		{
+			parse_dns_name(dst + j, ans + offset, ans);
+			break;
+		}
+		else
+		{
+			memmove(dst + j, name + i, len);
+			j += len;
+			i += len;
+		}
+
+		first = 0;
 	}
 
-	return (char *)(start_of_name + 1);
+	dst[j] = 0;
 }
 
-static inline void fill_result(dns_header_t *header, char *data)
+void append_answer(netdb_answer_t **answer, netdb_answer_t *new_answer)
 {
-	struct hostent *host = (struct hostent *)netdb_retbuf;
-	char *r = netdb_retbuf + sizeof(struct hostent);
+	if (*answer == NULL)
+	{
+		*answer = new_answer;
+		return;
+	}
 
-	size_t alias_count = 0, addr_count = 0;
-	size_t cannonical_name_len = 0;
+	netdb_answer_t *p = *answer;
+	while (p->next)
+	{
+		p = p->next;
+	}
+	p->next = new_answer;
+}
+
+static inline void parse_result(dns_header_t *header, char *data)
+{
 	const int ans_count = ntohs(header->ancount);
+	int has_canonical = FALSE;
 
-	char *p = data;
-	for (int i = 0; i < ans_count; i++)
-	{
-		dns_record_header_t *record_header = (dns_record_header_t *)p;
-		header_ntoh(record_header);
-		if (record_header->type == TYPE_A)
-		{
-			dns_record_a_t *record = (dns_record_a_t *)record_header;
-			int offset = record->header.compression & 0x0FFF;
-			char *can_name = ((char *)header) + offset;
-			can_name = parse_dns_name(can_name, (char *)header);
-			cannonical_name_len = strlen(can_name) + 1;
-			addr_count++;
-		}
-		else if (record_header->type == TYPE_CNAME)
-		{
-			alias_count++;
-		}
-
-		p += sizeof(dns_record_header_t) + record_header->length;
-	}
-
-	host->h_aliases = (char **)r;
-	r += (alias_count + 1) * sizeof(char *);
-	host->h_addr_list = (char **)r;
-	r += (addr_count + 1) * sizeof(char *);
-	host->h_name = r;
-	r += cannonical_name_len + 1;
-
-	int cname_pos = 0, ip_pos = 0;
 	for (int i = 0; i < ans_count; i++)
 	{
 		dns_record_header_t *record_header = (dns_record_header_t *)data;
 		if (ntohs(record_header->type) == TYPE_A)
 		{
 			dns_record_a_t *record = (dns_record_a_t *)data;
-			host->h_addr_list[ip_pos++] = r;
-			memmove(r, &record->addr, sizeof(ip_addr_t));
-			r += sizeof(ip_addr_t);
-			int offset = record->header.compression & 0x0FFF;
-			memmove(host->h_name, ((char *)header) + offset, cannonical_name_len);
+			netdb_answer_addr_t *answer = alloc_addr_answer();
+			answer->addr = ntohs(record->addr.addr);
+			append_answer(&query_ans, (netdb_answer_t *)answer);
+
+			if (!has_canonical)
+			{
+				has_canonical = TRUE;
+				netdb_answer_cname_t *cname = alloc_canno_name_answer();
+				int offset = record->header.compression & 0x0FFF;
+				char *can_name = ((char *)header) + offset;
+				parse_dns_name(cname->name, can_name, header);
+				append_answer(&query_ans, (netdb_answer_t *)cname);
+			}
 		}
 		else if (ntohs(record_header->type) == TYPE_CNAME)
 		{
 			char *cname = ((dns_record_cname_t *)data)->name;
-			strncpy(r, cname, strlen(cname));
-			host->h_aliases[cname_pos++] = r;
-			r += strlen(cname) + 1;
+			netdb_answer_alias_t *answer = alloc_alias_answer();
+			parse_dns_name(answer->name, cname, header);
+			append_answer(&query_ans, (netdb_answer_t *)answer);
 		}
+
+		data += sizeof(dns_record_header_t) + ntohs(record_header->length);
 	}
 }
 
@@ -192,9 +224,7 @@ void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 	uint16 response_flags = ntohs(response_header->flags);
 	if ((response_flags & 0xf) != 0 || (response_flags & 0x80) != 0x80)
 	{
-		// if response has error or server cannot do recursive query, the query will fail.
-		query_scceeded = 1;
-		goto end;
+		return;
 	}
 
 	uint8_t *start_of_name = (uint8_t * )(netdb_qbuf + sizeof(dns_header_t));
@@ -204,24 +234,23 @@ void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 	{
 		/* Restore the dot in the name and advance to next length */
 		total += *field_length + 1;
-		*field_length = '.';
 		field_length = start_of_name + total;
 	}
 
-	fill_result(response_header, (char *)field_length + 5);
-	query_scceeded = 0;
-end:
+	parse_result(response_header, (char *)field_length + 5);
+
 	pbuf_free(p);
-	wakeup(netdb_retbuf);
+	wakeup(&dns_pcb);
 }
 
 void netdbinit(void)
 {
-	netdb_retbuf = page_alloc();
-	KDEBUG_ASSERT(netdb_retbuf != NULL);
 	netdb_qbuf = page_alloc();
 	KDEBUG_ASSERT(netdb_qbuf != NULL);
 	buf_cleanup();
+
+	addr_cache = kmem_cache_create("netdbaddr", sizeof(netdb_answer_addr_t), 0);
+	name_cache = kmem_cache_create("netdbname", sizeof(netdb_answer_cname_t), 0);
 
 	initlock(&netdb_lock, "netdb");
 
@@ -235,17 +264,15 @@ void netdbinit(void)
 	KDEBUG_MSG_ASSERT(err == ERR_OK, "udp_bind failed");
 
 	netend_op();
-
-	cprintf("netdbinit: netdb_retbuf = 0x%p\n", netdb_retbuf);
 }
 
-struct hostent *gethostbyname(const char *hostname)
+struct netdb_answer *netdb_query(char *name, int type)
 {
-	struct hostent *host = (struct hostent *)netdb_retbuf;
 	acquire(&netdb_lock);
 	buf_cleanup();
 
-	char *p = netdb_retbuf; // temporarily use
+	char *p = netdb_qbuf + 2048;
+
 	dns_header_t *header = (dns_header_t *)p;
 	header->xid = byteswap16(0x1204); // should be random though
 	header->flags = byteswap16(0x0100); // Q, RD
@@ -259,15 +286,15 @@ struct hostent *gethostbyname(const char *hostname)
 	p += sizeof(dns_question_t);
 	question->name = p;
 
-	const uint8 hostlen = (uint8)strlen(hostname);
-	memmove(question->name + 1, hostname, hostlen + 1);
+	const uint8 hostlen = (uint8)strlen(name);
+	memmove(question->name + 1, name, hostlen + 1);
 
 	uint8 *prev = (uint8 *)question->name;
 	uint8 count = 0;
 
 	for (uint8 i = 0; i < hostlen; i++)
 	{
-		if (hostname[i] == '.')
+		if (name[i] == '.')
 		{
 			*prev = count;
 			prev = (uint8 *)(question->name + i + 1);
@@ -280,8 +307,9 @@ struct hostent *gethostbyname(const char *hostname)
 	}
 	*prev = count;
 
-	size_t packet_len = sizeof(dns_header_t) + sizeof(dns_question_t) - sizeof(char *) + hostlen + 2;
 	p = netdb_qbuf;
+	udp_send(dns_pcb, pbuf_alloc(PBUF_TRANSPORT, p - netdb_qbuf, PBUF_RAM));
+	size_t packet_len = sizeof(dns_header_t) + sizeof(dns_question_t) - sizeof(char *) + hostlen + 2;
 
 	memmove(p, header, sizeof(dns_header_t));
 	p += sizeof(dns_header_t);
@@ -301,8 +329,8 @@ struct hostent *gethostbyname(const char *hostname)
 		return NULL;
 	}
 	memmove(pbuf->payload, netdb_qbuf, packet_len);
-	query_scceeded = -1;
-	udp_recv(dns_pcb, netdb_dns_recv, netdb_retbuf);
+	query_ans = NULL;
+	udp_recv(dns_pcb, netdb_dns_recv, NULL);
 	err_t err = udp_send(dns_pcb, pbuf);
 
 	if (err != ERR_OK)
@@ -313,24 +341,29 @@ struct hostent *gethostbyname(const char *hostname)
 	}
 	netend_op();
 
-	if (query_scceeded < 0)
+	if (!query_ans)
 	{
-		sleep(netdb_retbuf, &netdb_lock);
+		sleep(&dns_pcb, &netdb_lock);
 	}
 	release(&netdb_lock);
-
-	if (query_scceeded != 0)
-	{
-		return NULL;
-	}
-
-	return host;
+	return query_ans;
 }
 
-struct hostent *gethostbyaddr(const char *addr, int len, int type)
+struct netdb_answer *netdb_free(struct netdb_answer *ans)
 {
-	return NULL;
+	struct netdb_answer *p = ans;
+	while (p)
+	{
+		struct netdb_answer *next = p->next;
+		if (p->type == NETDB_ANSWER_TYPE_ADDR)
+		{
+			kmem_cache_free(addr_cache, p);
+		}
+		else if (p->type == NETDB_ANSWER_TYPE_ALIAS || p->type == NETDB_ANSWER_TYPE_CANONICAL_NAME)
+		{
+			kmem_cache_free(name_cache, p);
+		}
+		p = next;
+	}
 }
-
-
 

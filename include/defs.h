@@ -18,6 +18,7 @@ struct netcard_opts;
 struct socket;
 struct sockaddr;
 struct hostent;
+struct netdb_answer;
 
 // bio.c
 void binit(void);
@@ -246,8 +247,8 @@ void netend_op();
 
 // netdb.c
 void netdbinit(void);
-struct hostent *gethostbyname(const char *name);
-struct hostent *gethostbyaddr(const char *addr, int len, int type);
+struct netdb_answer *netdb_query(char *name, int type);
+struct netdb_answer *netdb_free(struct netdb_answer *);
 
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);
