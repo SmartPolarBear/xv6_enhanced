@@ -83,6 +83,45 @@ typedef struct dns_record_cname
 #define TYPE_A 1
 #define TYPE_CNAME 5
 
+static inline void header_ntoh(dns_record_header_t *h)
+{
+	h->compression = ntohs(h->compression);
+	h->type = ntohs(h->type);
+	h->class = ntohs(h->class);
+	h->ttl = ntohl(h->ttl);
+	h->length = ntohs(h->length);
+}
+
+static inline char *parse_dns_name(char *str, char *data)
+{
+	uint8_t *start_of_name = (uint8_t *)str;
+	uint8_t total = 0;
+	uint8_t *field_length = start_of_name;
+	while (*field_length != 0 && *field_length != 0xC0)
+	{
+		/* Restore the dot in the name and advance to next length */
+		total += *field_length + 1;
+		*field_length = '.';
+		field_length = start_of_name + total;
+	}
+
+	for (uint8 *p = start_of_name; p <= field_length; p++)
+	{
+		if (((*p) & 0xF0) == 0xC0)
+		{
+			uint16 offset = ntohs(*((uint16 *)(p))) & 0x0FFF;
+			char *i = data + offset;
+			while (*i)
+			{
+				*p++ = *i++;
+			}
+			*p = 0;
+		}
+	}
+
+	return (char *)(start_of_name + 1);
+}
+
 static inline void fill_result(dns_header_t *header, char *data)
 {
 	struct hostent *host = (struct hostent *)netdb_retbuf;
@@ -90,19 +129,28 @@ static inline void fill_result(dns_header_t *header, char *data)
 
 	size_t alias_count = 0, addr_count = 0;
 	size_t cannonical_name_len = 0;
-	for (int i = 0; i < header->ancount; i++)
+	const int ans_count = ntohs(header->ancount);
+
+	char *p = data;
+	for (int i = 0; i < ans_count; i++)
 	{
-		dns_record_header_t *record_header = (dns_record_header_t *)data;
-		if (ntohs(record_header->type) == TYPE_A)
+		dns_record_header_t *record_header = (dns_record_header_t *)p;
+		header_ntoh(record_header);
+		if (record_header->type == TYPE_A)
 		{
-			dns_record_a_t *record = (dns_record_a_t *)data;
-			cannonical_name_len = strlen(host->h_name);
+			dns_record_a_t *record = (dns_record_a_t *)record_header;
+			int offset = record->header.compression & 0x0FFF;
+			char *can_name = ((char *)header) + offset;
+			can_name = parse_dns_name(can_name, (char *)header);
+			cannonical_name_len = strlen(can_name) + 1;
 			addr_count++;
 		}
-		else if (ntohs(record_header->type) == TYPE_CNAME)
+		else if (record_header->type == TYPE_CNAME)
 		{
 			alias_count++;
 		}
+
+		p += sizeof(dns_record_header_t) + record_header->length;
 	}
 
 	host->h_aliases = (char **)r;
@@ -112,7 +160,27 @@ static inline void fill_result(dns_header_t *header, char *data)
 	host->h_name = r;
 	r += cannonical_name_len + 1;
 
-
+	int cname_pos = 0, ip_pos = 0;
+	for (int i = 0; i < ans_count; i++)
+	{
+		dns_record_header_t *record_header = (dns_record_header_t *)data;
+		if (ntohs(record_header->type) == TYPE_A)
+		{
+			dns_record_a_t *record = (dns_record_a_t *)data;
+			host->h_addr_list[ip_pos++] = r;
+			memmove(r, &record->addr, sizeof(ip_addr_t));
+			r += sizeof(ip_addr_t);
+			int offset = record->header.compression & 0x0FFF;
+			memmove(host->h_name, ((char *)header) + offset, cannonical_name_len);
+		}
+		else if (ntohs(record_header->type) == TYPE_CNAME)
+		{
+			char *cname = ((dns_record_cname_t *)data)->name;
+			strncpy(r, cname, strlen(cname));
+			host->h_aliases[cname_pos++] = r;
+			r += strlen(cname) + 1;
+		}
+	}
 }
 
 void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
@@ -129,7 +197,18 @@ void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 		goto end;
 	}
 
-	fill_result(response_header, netdb_qbuf + sizeof(dns_header_t));
+	uint8_t *start_of_name = (uint8_t * )(netdb_qbuf + sizeof(dns_header_t));
+	uint8_t total = 0;
+	uint8_t *field_length = start_of_name;
+	while (*field_length != 0)
+	{
+		/* Restore the dot in the name and advance to next length */
+		total += *field_length + 1;
+		*field_length = '.';
+		field_length = start_of_name + total;
+	}
+
+	fill_result(response_header, (char *)field_length + 5);
 	query_scceeded = 0;
 end:
 	pbuf_free(p);
