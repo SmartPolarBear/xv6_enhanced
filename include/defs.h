@@ -19,6 +19,7 @@ struct socket;
 struct sockaddr;
 struct hostent;
 struct netdb_answer;
+struct in_addr;
 
 // bio.c
 void binit(void);
@@ -250,6 +251,10 @@ void netdbinit(void);
 struct netdb_answer *netdb_query(char *name, int type);
 void netdb_free(struct netdb_answer *);
 void netdb_dump_answer(struct netdb_answer *);
+
+// netutils.c
+char *inet_ntoa(struct in_addr in);
+int inet_aton(const char *cp, struct in_addr *ap);
 
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);

@@ -52,6 +52,11 @@ typedef struct sockaddr_in
 	ip_addr_t sin_addr;
 } sockaddr_in_t;
 
+struct in_addr
+{
+	unsigned long s_addr;  // load with inet_aton()
+};
+
 #define IFNAMSIZ 16
 
 typedef struct ifreq

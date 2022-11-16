@@ -84,6 +84,20 @@ static inline void buf_cleanup()
 	memset(netdb_qbuf, 0, PGSIZE);
 }
 
+static inline void addr_to_dotdec(char *dst, uint32 ip)
+{
+	uint8 *p = (uint8 *)&ip;
+	for (int i = 0; i < 3; i++)
+	{
+		uint8 val = *p;
+		while (val)
+		{
+			*dst++ = '0' + (val % 10);
+			val /= 10;
+		}
+	}
+}
+
 static inline netdb_answer_cname_t *alloc_canno_name_answer()
 {
 	netdb_answer_cname_t *answer = kmem_cache_alloc(name_cache);
@@ -108,6 +122,15 @@ static inline netdb_answer_addr_t *alloc_addr_answer()
 	KDEBUG_ASSERT(answer != NULL);
 	memset(answer, 0, sizeof(netdb_answer_addr_t));
 	answer->answer.type = NETDB_ANSWER_TYPE_ADDR;
+	return answer;
+}
+
+static inline netdb_answer_pointer_t *alloc_pointer_answer()
+{
+	netdb_answer_pointer_t *answer = kmem_cache_alloc(name_cache);
+	KDEBUG_ASSERT(answer != NULL);
+	memset(answer, 0, sizeof(netdb_answer_pointer_t));
+	answer->answer.type = NETDB_ANSWER_TYPE_POINTER;
 	return answer;
 }
 
@@ -203,11 +226,17 @@ static inline void parse_result(dns_header_t *header, char *data)
 				append_answer(&query_ans, (netdb_answer_t *)cname);
 			}
 		}
-		else if (ntohs(record_header->type) == TYPE_CNAME ||
-			ntohs(record_header->type) == TYPE_PTR)
+		else if (ntohs(record_header->type) == TYPE_CNAME)
 		{
 			char *cname = ((dns_record_cname_t *)data)->name;
 			netdb_answer_alias_t *answer = alloc_alias_answer();
+			parse_dns_name(answer->name, cname, (char *)header);
+			append_answer(&query_ans, (netdb_answer_t *)answer);
+		}
+		else if (ntohs(record_header->type) == TYPE_PTR)
+		{
+			char *cname = ((dns_record_cname_t *)data)->name;
+			netdb_answer_pointer_t *answer = alloc_pointer_answer();
 			parse_dns_name(answer->name, cname, (char *)header);
 			append_answer(&query_ans, (netdb_answer_t *)answer);
 		}
@@ -267,7 +296,7 @@ void netdbinit(void)
 	netend_op();
 }
 
-static inline struct netdb_answer *make_query(char *name)
+static inline struct netdb_answer *make_query(char *name, int type)
 {
 	assert_holding(&netdb_lock);
 
@@ -280,7 +309,7 @@ static inline struct netdb_answer *make_query(char *name)
 
 	p += sizeof(dns_header_t);
 	dns_question_t *question = (dns_question_t *)p;
-	question->dnstype = byteswap16(1); // A
+	question->dnstype = byteswap16(type); // A or PTR
 	question->dnsclass = byteswap16(1); // IN
 
 	p += sizeof(dns_question_t);
@@ -356,18 +385,59 @@ struct netdb_answer *netdb_query(char *name, int type)
 	struct netdb_answer *ans = NULL;
 	if (type == 0) // DNS
 	{
-		ans = make_query(name);
+		ans = make_query(name, TYPE_A);
 	}
 	else // reverse DNS
 	{
-		char *p = netdb_qbuf + 3072;
-		strncpy(p, name, 512);
-		char *iter = p;
-		while (*iter)
-			iter++;
-		strncpy(iter, ".in-addr.arpa", 14);
 
-		ans = make_query(p);
+		char *p = netdb_qbuf + 3072;
+		uint32 ip = 0;
+		if (!inet_aton(name, (struct in_addr *)&ip))
+		{
+			release(&netdb_lock);
+			return NULL;
+		}
+
+		char *pip = (char *)&ip;
+		for (int i = 3; i >= 0; i--)
+		{
+			uint8 val = pip[i];
+			if (val >= 100)
+			{
+				*p++ = '0' + val / 100;
+				val %= 100;
+				*p++ = '0' + val / 10;
+				val %= 10;
+				*p++ = '0' + val;
+			}
+			else if (val >= 10)
+			{
+				*p++ = '0' + val / 10;
+				val %= 10;
+				*p++ = '0' + val;
+			}
+			else
+			{
+				*p++ = '0' + val;
+			}
+			*p++ = '.';
+		}
+
+		*p++ = 'i';
+		*p++ = 'n';
+		*p++ = '-';
+		*p++ = 'a';
+		*p++ = 'd';
+		*p++ = 'd';
+		*p++ = 'r';
+		*p++ = '.';
+		*p++ = 'a';
+		*p++ = 'r';
+		*p++ = 'p';
+		*p++ = 'a';
+		*p++ = '\0';
+
+		ans = make_query(netdb_qbuf + 3072, TYPE_PTR);
 	}
 
 	release(&netdb_lock);
@@ -415,6 +485,11 @@ void netdb_dump_answer(struct netdb_answer *ans)
 		{
 			netdb_answer_cname_t *cname = (netdb_answer_cname_t *)p;
 			cprintf("cname: %s\n", cname->name);
+		}
+		else if (p->type == NETDB_ANSWER_TYPE_POINTER)
+		{
+			netdb_answer_pointer_t *ptr = (netdb_answer_pointer_t *)p;
+			cprintf("ptr: %s\n", ptr->name);
 		}
 		else
 		{
