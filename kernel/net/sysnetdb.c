@@ -13,7 +13,7 @@ int sys_gethostbyname(void)
 	{
 		return -1;
 	}
-	struct netdb_answer *ret = netdb_query("cn.bing.com", 0);
+	struct netdb_answer *ret = netdb_query("204.79.197.200", 1);
 	netdb_dump_answer(ret);
 	return 0;
 //	return (int)gethostbyname(name);

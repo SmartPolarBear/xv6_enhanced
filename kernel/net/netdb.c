@@ -52,16 +52,17 @@ typedef struct dns_record_header
 typedef struct dns_record_a
 {
 	dns_record_header_t header;
-	ip_addr_t addr;
+	unsigned long addr;
 } __attribute__((packed)) dns_record_a_t;
 
-typedef struct dns_record_cname
+typedef struct dns_record_cname_ptr
 {
 	dns_record_header_t header;
 	char name[0];
-} __attribute__((packed)) dns_record_cname_t;
+} __attribute__((packed)) dns_record_cname_t, dns_record_ptr_t;
 
 #define TYPE_A 1
+#define TYPE_PTR 12
 #define TYPE_CNAME 5
 
 char *netdb_qbuf;
@@ -189,7 +190,7 @@ static inline void parse_result(dns_header_t *header, char *data)
 		{
 			dns_record_a_t *record = (dns_record_a_t *)data;
 			netdb_answer_addr_t *answer = alloc_addr_answer();
-			answer->addr = ntohs(record->addr.addr);
+			answer->addr = ntohl(record->addr);
 			append_answer(&query_ans, (netdb_answer_t *)answer);
 
 			if (!has_canonical)
@@ -202,7 +203,8 @@ static inline void parse_result(dns_header_t *header, char *data)
 				append_answer(&query_ans, (netdb_answer_t *)cname);
 			}
 		}
-		else if (ntohs(record_header->type) == TYPE_CNAME)
+		else if (ntohs(record_header->type) == TYPE_CNAME ||
+			ntohs(record_header->type) == TYPE_PTR)
 		{
 			char *cname = ((dns_record_cname_t *)data)->name;
 			netdb_answer_alias_t *answer = alloc_alias_answer();
@@ -265,10 +267,9 @@ void netdbinit(void)
 	netend_op();
 }
 
-struct netdb_answer *netdb_query(char *name, int type)
+static inline struct netdb_answer *make_query(char *name)
 {
-	acquire(&netdb_lock);
-	buf_cleanup();
+	assert_holding(&netdb_lock);
 
 	char *p = netdb_qbuf + 2048;
 
@@ -344,8 +345,33 @@ struct netdb_answer *netdb_query(char *name, int type)
 	{
 		sleep(&dns_pcb, &netdb_lock);
 	}
-	release(&netdb_lock);
 	return query_ans;
+}
+
+struct netdb_answer *netdb_query(char *name, int type)
+{
+	acquire(&netdb_lock);
+	buf_cleanup();
+
+	struct netdb_answer *ans = NULL;
+	if (type == 0) // DNS
+	{
+		ans = make_query(name);
+	}
+	else // reverse DNS
+	{
+		char *p = netdb_qbuf + 3072;
+		strncpy(p, name, 512);
+		char *iter = p;
+		while (*iter)
+			iter++;
+		strncpy(iter, ".in-addr.arpa", 14);
+
+		ans = make_query(p);
+	}
+
+	release(&netdb_lock);
+	return ans;
 }
 
 void netdb_free(struct netdb_answer *ans)
