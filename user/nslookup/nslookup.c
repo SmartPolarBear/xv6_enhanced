@@ -2,20 +2,9 @@
 // Created by Zhao Qi‘ao on 2022/11/15.
 //
 #include <stdio.h>
-#include <stdlib.h>
-#include <signal.h>
 #include <sys/socket.h>
-#include <fcntl.h>
-#include <string.h>
-#include <time.h>
 #include <arpa/inet.h>
-#include <math.h>
 #include <netdb.h>
-#define MAX_BUF_SIZE 1024
-#define TYPE_A 1
-#define DNS_SERVER_PORT 53
-#define DNS_SERVER_IP "114.114.114.114"
-#define CNAME 0x05
 
 int main(int argc, char *argv[]){
     /*
