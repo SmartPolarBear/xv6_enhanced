@@ -30,6 +30,12 @@ typedef enum netdb_answer_type
 	NETDB_ANSWER_TYPE_POINTER,
 } netdb_answer_type_t;
 
+typedef enum netdb_query_type
+{
+	QUERY_DNS = 0,
+	QUERY_ARPA,
+} netdb_query_type_t;
+
 struct hostent
 {
 	char *h_name;            /* official name of host */

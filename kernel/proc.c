@@ -362,6 +362,12 @@ wait(int *exit_code)
 					*exit_code = p->exit_code;
 				}
 
+				if (p->inet.netdb)
+				{
+					page_free(p->inet.netdb);
+					p->inet.netdb = NULL;
+				}
+
 				release(&ptable.lock);
 				return pid;
 			}

@@ -383,7 +383,7 @@ struct netdb_answer *netdb_query(char *name, int type)
 	buf_cleanup();
 
 	struct netdb_answer *ans = NULL;
-	if (type == 0) // DNS
+	if (type == QUERY_DNS) // DNS
 	{
 		ans = make_query(name, TYPE_A);
 	}
@@ -454,7 +454,9 @@ void netdb_free(struct netdb_answer *ans)
 		{
 			kmem_cache_free(addr_cache, p);
 		}
-		else if (p->type == NETDB_ANSWER_TYPE_ALIAS || p->type == NETDB_ANSWER_TYPE_CANONICAL_NAME)
+		else if (p->type == NETDB_ANSWER_TYPE_ALIAS ||
+			p->type == NETDB_ANSWER_TYPE_CANONICAL_NAME ||
+			p->type == NETDB_ANSWER_TYPE_POINTER)
 		{
 			kmem_cache_free(name_cache, p);
 		}

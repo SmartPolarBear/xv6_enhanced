@@ -8,13 +8,13 @@
 
 int main()
 {
-	struct hostent *host = (struct hostent *)gethostbyname("www.baidu.com");
+	struct hostent *host = (struct hostent *)gethostbyname("cn.bing.com");
 	if (host == NULL)
 	{
 		printf(1, "gethostbyname failed");
 	}
 
-	printf(1, "h_name: %s", host->h_name);
-	printf(1, "h_addr: %s", host->h_addr);
+	printf(1, "h_name: %s\n", host->h_name);
+	printf(1, "h_addr: 0x%x\n", *((uint32_t *)(host->h_addr_list[0])));
 	return 0;
 }

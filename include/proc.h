@@ -67,6 +67,11 @@ struct proc
 
 	int alarm_ticks;
 	int alarm_interval;
+
+	struct
+	{
+		char *netdb;
+	} inet;
 };
 
 // Process memory is laid out contiguously, low addresses first:
