@@ -248,7 +248,8 @@ void netend_op();
 // netdb.c
 void netdbinit(void);
 struct netdb_answer *netdb_query(char *name, int type);
-struct netdb_answer *netdb_free(struct netdb_answer *);
+void netdb_free(struct netdb_answer *);
+void netdb_dump_answer(struct netdb_answer *);
 
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);

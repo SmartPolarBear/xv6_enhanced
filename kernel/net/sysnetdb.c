@@ -14,6 +14,7 @@ int sys_gethostbyname(void)
 		return -1;
 	}
 	struct netdb_answer *ret = netdb_query("cn.bing.com", 0);
+	netdb_dump_answer(ret);
 	return 0;
 //	return (int)gethostbyname(name);
 }

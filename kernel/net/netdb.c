@@ -88,6 +88,7 @@ static inline netdb_answer_cname_t *alloc_canno_name_answer()
 	netdb_answer_cname_t *answer = kmem_cache_alloc(name_cache);
 	KDEBUG_ASSERT(answer != NULL);
 	memset(answer, 0, sizeof(netdb_answer_cname_t));
+	answer->answer.type = NETDB_ANSWER_TYPE_CANONICAL_NAME;
 	return answer;
 }
 
@@ -96,6 +97,7 @@ static inline netdb_answer_alias_t *alloc_alias_answer()
 	netdb_answer_alias_t *answer = kmem_cache_alloc(name_cache);
 	KDEBUG_ASSERT(answer != NULL);
 	memset(answer, 0, sizeof(netdb_answer_alias_t));
+	answer->answer.type = NETDB_ANSWER_TYPE_ALIAS;
 	return answer;
 }
 
@@ -104,6 +106,7 @@ static inline netdb_answer_addr_t *alloc_addr_answer()
 	netdb_answer_addr_t *answer = kmem_cache_alloc(addr_cache);
 	KDEBUG_ASSERT(answer != NULL);
 	memset(answer, 0, sizeof(netdb_answer_addr_t));
+	answer->answer.type = NETDB_ANSWER_TYPE_ADDR;
 	return answer;
 }
 
@@ -111,55 +114,51 @@ static inline netdb_answer_addr_t *alloc_addr_answer()
 /// \param dst the result
 /// \param name compressed name
 /// \param ans full response data
-static inline void parse_dns_name(char *dst, char *name, char *ans)
+static inline char *parse_dns_name(char *dst, char *name, char *ans)
 {
-	int i = 0;
-	int j = 0;
+	char *p = name;
+	char *d = dst;
+	char *s = ans;
 	int len = 0;
+	int i = 0;
 	int offset = 0;
 	int first = 1;
-	int compressed = 0;
 
-	while (1)
+	while (*p != 0)
 	{
-		len = name[i];
-		if (len == 0)
+		if ((*p & 0xc0) == 0xc0)
 		{
-			break;
+			offset = (*p & 0x3f) << 8;
+			p++;
+			offset |= *p;
+			p = s + offset;
+			continue;
 		}
 
-		if (len & 0xc0)
+		len = *p;
+		p++;
+
+		if (first)
 		{
-			compressed = 1;
-			offset = ((len & 0x3f) << 8) | name[i + 1];
-			i += 2;
+			first = 0;
 		}
 		else
 		{
-			i++;
+			*d = '.';
+			d++;
 		}
 
-		if (!first)
+		for (i = 0; i < len; i++)
 		{
-			dst[j++] = '.';
+			*d = *p;
+			d++;
+			p++;
 		}
-
-		if (compressed)
-		{
-			parse_dns_name(dst + j, ans + offset, ans);
-			break;
-		}
-		else
-		{
-			memmove(dst + j, name + i, len);
-			j += len;
-			i += len;
-		}
-
-		first = 0;
 	}
 
-	dst[j] = 0;
+	*d = 0;
+
+	return p + 1;
 }
 
 void append_answer(netdb_answer_t **answer, netdb_answer_t *new_answer)
@@ -197,9 +196,9 @@ static inline void parse_result(dns_header_t *header, char *data)
 			{
 				has_canonical = TRUE;
 				netdb_answer_cname_t *cname = alloc_canno_name_answer();
-				int offset = record->header.compression & 0x0FFF;
+				int offset = htons(record->header.compression) & 0x0FFF;
 				char *can_name = ((char *)header) + offset;
-				parse_dns_name(cname->name, can_name, header);
+				parse_dns_name(cname->name, can_name, (char *)header);
 				append_answer(&query_ans, (netdb_answer_t *)cname);
 			}
 		}
@@ -207,7 +206,7 @@ static inline void parse_result(dns_header_t *header, char *data)
 		{
 			char *cname = ((dns_record_cname_t *)data)->name;
 			netdb_answer_alias_t *answer = alloc_alias_answer();
-			parse_dns_name(answer->name, cname, header);
+			parse_dns_name(answer->name, cname, (char *)header);
 			append_answer(&query_ans, (netdb_answer_t *)answer);
 		}
 
@@ -349,7 +348,7 @@ struct netdb_answer *netdb_query(char *name, int type)
 	return query_ans;
 }
 
-struct netdb_answer *netdb_free(struct netdb_answer *ans)
+void netdb_free(struct netdb_answer *ans)
 {
 	struct netdb_answer *p = ans;
 	while (p)
@@ -363,7 +362,38 @@ struct netdb_answer *netdb_free(struct netdb_answer *ans)
 		{
 			kmem_cache_free(name_cache, p);
 		}
+		else
+		{
+			panic("unknown netdb type");
+		}
 		p = next;
 	}
 }
 
+void netdb_dump_answer(struct netdb_answer *ans)
+{
+	struct netdb_answer *p = ans;
+	while (p)
+	{
+		if (p->type == NETDB_ANSWER_TYPE_ADDR)
+		{
+			netdb_answer_addr_t *addr = (netdb_answer_addr_t *)p;
+			cprintf("addr: 0x%x\n", addr->addr);
+		}
+		else if (p->type == NETDB_ANSWER_TYPE_ALIAS)
+		{
+			netdb_answer_cname_t *cname = (netdb_answer_cname_t *)p;
+			cprintf("alias: %s\n", cname->name);
+		}
+		else if (p->type == NETDB_ANSWER_TYPE_CANONICAL_NAME)
+		{
+			netdb_answer_cname_t *cname = (netdb_answer_cname_t *)p;
+			cprintf("cname: %s\n", cname->name);
+		}
+		else
+		{
+			panic("unknown netdb type");
+		}
+		p = p->next;
+	}
+}
