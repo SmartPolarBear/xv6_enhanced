@@ -1,4 +1,3 @@
-//
 // Created by Zhao Qi‘ao on 2022/11/15.
 //
 #include <stdio.h>

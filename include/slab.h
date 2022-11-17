@@ -5,7 +5,7 @@
 #include "list.h"
 
 #define KMEM_CACHE_NAME_MAXLEN 16
-#define SIZED_CACHE_COUNT 8
+#define SIZED_CACHE_COUNT 5
 
 #define SIZED_INDEX_TO_SIZE(index) (1 << (4 + (index)))
 

@@ -14,3 +14,26 @@
 
 #define V2P_WO(x) ((x) - KERNBASE)    // same as V2P, but without casts
 #define P2V_WO(x) ((x) + KERNBASE)    // same as P2V, but without casts
+
+#ifndef __ASSEMBLER__
+
+#include <types.h>
+// some constants for bios interrupt 15h AX = 0xE820
+#define E820MAX             20      // number of entries in E820MAP
+#define E820_ARM            1       // address range memory
+#define E820_ARR            2       // address range reserved
+
+struct e820map_item
+{
+	uint64 addr;
+	uint64 size;
+	uint32 type;
+}__attribute__((packed));
+
+struct e820map
+{
+	int32 nr_map;
+	struct e820map_item map[E820MAX];
+}__attribute__((packed));
+
+#endif

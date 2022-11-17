@@ -17,6 +17,9 @@ struct netdev;
 struct netcard_opts;
 struct socket;
 struct sockaddr;
+struct hostent;
+struct netdb_answer;
+struct in_addr;
 
 // bio.c
 void binit(void);
@@ -211,6 +214,8 @@ void switchuvm(struct proc *);
 void switchkvm(void);
 int copyout(pde_t *, uint, void *, uint);
 void clearpteu(pde_t *pgdir, char *uva);
+int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+int remappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
@@ -243,6 +248,16 @@ struct netdev *find_card_by_name(char *name);
 void netbegin_op();
 void netend_op();
 
+// netdb.c
+void netdbinit(void);
+struct netdb_answer *netdb_query(char *name, int type);
+void netdb_free(struct netdb_answer *);
+void netdb_dump_answer(struct netdb_answer *);
+
+// netutils.c
+char *inet_ntoa(struct in_addr in);
+int inet_aton(const char *cp, struct in_addr *ap);
+
 // virtio_nic.c
 int virtio_nic_attach(struct pci_func *pcif);
 
@@ -261,3 +276,9 @@ struct file *socketaccept(struct socket *skt, struct sockaddr *addr, int *addrle
 int socketrecv(struct socket *skt, char *buf, int len, int flags);
 int socketsend(struct socket *skt, char *buf, int len, int flags);
 int socketioctl(struct socket *, int, void *);
+int socketsendto(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen);
+int socketrecvfrom(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen);
+int socketgetsockopt(struct socket *skt, int level, int optname, void *optval, int *optlen);
+
+// pmm.c
+void pmminit(void);

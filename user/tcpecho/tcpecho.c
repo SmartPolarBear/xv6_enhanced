@@ -19,8 +19,8 @@ main(int argc, char *argv[])
 	}
 	printf(1, "socket: success, soc=%d\n", soc);
 	self.sin_family = AF_INET;
-	self.sin_addr.addr = INADDR_ANY;
-	self.sin_port = 7;//hton16(7);
+	self.sin_addr = INADDR_ANY;
+	self.sin_port = hton16(7);
 	if (bind(soc, (struct sockaddr *)&self, sizeof(self)) == -1)
 	{
 		printf(1, "bind: failure\n");
@@ -28,7 +28,7 @@ main(int argc, char *argv[])
 		exit(soc);
 	}
 	addr = (unsigned char *)&self.sin_addr;
-	printf(1, "bind: success, self=%d.%d.%d.%d:%d\n", addr[0], addr[1], addr[2], addr[3], ntoh16(self.sin_port));
+	printf(1, "bind: success, self=%d.%d.%d.%d:%d\n", addr[3], addr[2], addr[1], addr[0], ntoh16(self.sin_port));
 	listen(soc, 100);
 	printf(1, "waiting for connection...\n");
 	peerlen = sizeof(peer);
@@ -40,7 +40,7 @@ main(int argc, char *argv[])
 		exit(soc);
 	}
 	addr = (unsigned char *)&peer.sin_addr;
-	printf(1, "accept: success, peer=%d.%d.%d.%d:%d\n", addr[0], addr[1], addr[2], addr[3], ntoh16(peer.sin_port));
+	printf(1, "accept: success, peer=%d.%d.%d.%d:%d\n", addr[3], addr[2], addr[1], addr[0], ntoh16(peer.sin_port));
 	while (1)
 	{
 		memset(buf, 0, sizeof(buf));

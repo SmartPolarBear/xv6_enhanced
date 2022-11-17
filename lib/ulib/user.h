@@ -44,8 +44,11 @@ int listen(int, int);
 int accept(int, struct sockaddr *, int *);
 int recv(int, char *, int);
 int send(int, char *, int);
-int recvfrom(int, char *, int, struct sockaddr *, int *);
-int sendto(int, char *, int, struct sockaddr *, int);
+int recvfrom(int, char *, int, int, struct sockaddr *, int *);
+int sendto(int, char *, int, int, struct sockaddr *, int);
+int getsockopt(int, int, int, char *, int *);
+int gethostbyname(char *);
+int gethostbyaddr(char *);
 
 // ulib.c
 int stat(const char *, struct stat *);

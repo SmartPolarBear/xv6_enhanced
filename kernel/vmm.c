@@ -68,8 +68,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 	mappages: va=8011c000, size=dee4000, pa=11c000, perm=2
 	mappages: va=fe000000, size=2000000, pa=fe000000, perm=2
  */
-static int
-mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
+int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
 	char *a, *last;
 	pte_t *pte;
@@ -85,6 +84,35 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 		if (*pte & PTE_P)
 		{
 			panic("remap");
+		}
+		*pte = pa | perm | PTE_P;
+		if (a == last)
+		{
+			break;
+		}
+		a += PGSIZE;
+		pa += PGSIZE;
+	}
+	return 0;
+}
+
+// same as mappages, but for remmap entries in page table
+int remappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
+{
+	char *a, *last;
+	pte_t *pte;
+
+	a = (char *)PGROUNDDOWN((uint)va);
+	last = (char *)PGROUNDDOWN(((uint)va) + size - 1);
+	for (;;)
+	{
+		if ((pte = walkpgdir(pgdir, a, 1)) == 0)
+		{
+			return -1;
+		}
+		if (!(*pte & PTE_P))
+		{
+			panic("not mapped");
 		}
 		*pte = pa | perm | PTE_P;
 		if (a == last)
