@@ -112,5 +112,5 @@ inet_ntoa(struct in_addr in)
 		*b++ = '.';
 	}
 
-	return (b);
+	return buf;
 }

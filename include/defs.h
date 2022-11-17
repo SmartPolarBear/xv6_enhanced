@@ -170,6 +170,7 @@ void *memmove(void *, const void *, uint);
 void *memset(void *, int, uint);
 char *safestrcpy(char *, const char *, int);
 int strlen(const char *);
+int strnlen(const char *, int);
 int strncmp(const char *, const char *, uint);
 char *strncpy(char *, const char *, int);
 

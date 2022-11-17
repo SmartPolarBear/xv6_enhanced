@@ -1,6 +1,7 @@
 #include "types.h"
 #include "user.h"
 #include "socket.h"
+#include "inet.h"
 
 int
 main(int argc, char *argv[])

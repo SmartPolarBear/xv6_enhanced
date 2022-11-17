@@ -23,7 +23,6 @@ int main(int argc, char *argv[])
 	printf(1, "HOST NAME: %s\n", hptr->h_name);
 	char **p_alias = hptr->h_aliases;
 	char **p_addr = hptr->h_addr_list;
-	char str[INET_ADDRSTRLEN];
 	while (*p_alias)
 	{
 		printf(1, "ALIAS: %s\n", *p_alias);
@@ -38,7 +37,7 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			printf(2, "Unknown Address Type\n");
+			printf(2, "Unknown address type\n");
 		}
 	}
 	return 0;

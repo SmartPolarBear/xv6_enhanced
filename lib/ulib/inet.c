@@ -95,7 +95,7 @@ hton16(uint16_t h)
 	{
 		endian = byteorder();
 	}
-	return endian == __LITTLE_ENDIAN ? byteswap16(h) : h;
+	return endian == __LITTLE_ENDIAN ? __builtin_bswap16(h) : h;
 }
 
 uint16_t
@@ -105,7 +105,7 @@ ntoh16(uint16_t n)
 	{
 		endian = byteorder();
 	}
-	return endian == __LITTLE_ENDIAN ? byteswap16(n) : n;
+	return endian == __LITTLE_ENDIAN ? __builtin_bswap16(n) : n;
 }
 
 uint32_t
@@ -115,7 +115,7 @@ hton32(uint32_t h)
 	{
 		endian = byteorder();
 	}
-	return endian == __LITTLE_ENDIAN ? byteswap32(h) : h;
+	return endian == __LITTLE_ENDIAN ? __builtin_bswap32(h) : h;
 }
 
 uint32_t
@@ -125,7 +125,7 @@ ntoh32(uint32_t n)
 	{
 		endian = byteorder();
 	}
-	return endian == __LITTLE_ENDIAN ? byteswap32(n) : n;
+	return endian == __LITTLE_ENDIAN ? __builtin_bswap32(n) : n;
 }
 
 long
@@ -287,5 +287,5 @@ char *inet_ntoa(struct in_addr in)
 		*b++ = '.';
 	}
 
-	return (b);
+	return buf;
 }

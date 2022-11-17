@@ -4,6 +4,7 @@
 
 #include "socket.h"
 #include "user.h"
+#include "inet.h"
 
 
 /* RFC 867: Daytime Protocol */

@@ -104,6 +104,7 @@ add_executable(kernel
         pipe.c
         proc.c
         pmm.c
+        printfmt.c
         sleeplock.c
         spinlock.c
         string.c

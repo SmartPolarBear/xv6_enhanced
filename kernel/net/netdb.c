@@ -340,7 +340,6 @@ static inline struct netdb_answer *make_query(char *name, int type)
 	*prev = count;
 
 	p = netdb_qbuf;
-	udp_send(dns_pcb, pbuf_alloc(PBUF_TRANSPORT, p - netdb_qbuf, PBUF_RAM));
 	size_t packet_len = sizeof(dns_header_t) + sizeof(dns_question_t) - sizeof(char *) + hostlen + 2;
 
 	memmove(p, header, sizeof(dns_header_t));

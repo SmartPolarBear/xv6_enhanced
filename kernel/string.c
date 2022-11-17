@@ -123,3 +123,10 @@ strlen(const char *s)
 	return n;
 }
 
+int strnlen(const char *s, int n)
+{
+	int i;
+
+	for (i = 0; i < n && s[i]; i++);
+	return i;
+}
