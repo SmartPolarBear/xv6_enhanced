@@ -2,6 +2,10 @@
 // Created by bear on 11/17/2022.
 //
 
+//
+// Created by bear on 11/17/2022.
+//
+
 // Stripped-down primitive printf-style formatting routines,
 // used in common by printf, sprintf, fprintf, etc.
 // This code is also used by both the kernel and user programs.
@@ -219,7 +223,7 @@ vprintfmt(void (*putch)(int, void *), void *putdat, const char *fmt, va_list ap)
 			putch('0', putdat);
 			putch('x', putdat);
 			num = (unsigned long long)
-				(uintptr_t)va_arg(ap, void *);
+				(uint)va_arg(ap, void *);
 			base = 16;
 			goto number;
 

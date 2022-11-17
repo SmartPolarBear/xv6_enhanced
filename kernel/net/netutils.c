@@ -83,34 +83,12 @@ inet_aton(const char *cp, struct in_addr *ap)
 	return 1;
 }
 
-static char buf[18];
+static char buf[INET_ADDRSTRLEN];
 
-char *
-inet_ntoa(struct in_addr in)
+char *inet_ntoa(struct in_addr in)
 {
-	char *b = buf;
-	register char *p;
-
-	p = (char *)&in;
-#define    UC(b)    (((int)b)&0xff)
-	for (int i = 0; i < 4; i++)
-	{
-		char val = UC(p[i]);
-		if (val >= 100)
-		{
-			*b++ = '0' + val / 100;
-			val %= 100;
-			*b++ = '0' + val / 10;
-			val %= 10;
-		}
-		else if (val >= 10)
-		{
-			*b++ = '0' + val / 10;
-			val %= 10;
-		}
-		*b++ = '0' + val;
-		*b++ = '.';
-	}
-
+	uint8 *p = (uint8 *)&in.s_addr;
+	memset(buf, 0, sizeof(buf));
+	snprintf(buf, INET_ADDRSTRLEN, "%d.%d.%d.%d", p[3], p[2], p[1], p[0]);
 	return buf;
 }

@@ -77,5 +77,6 @@ void *malloc(uint);
 void free(void *);
 int atoi(const char *);
 long strtol(const char *s, char **endptr, int base);
+int strnlen(const char *,int);
 
-
+int snprintf(char *buf, int n, const char *fmt, ...);

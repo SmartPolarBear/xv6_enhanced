@@ -52,9 +52,17 @@ printint(int xx, int base, int sign)
 	while (--i >= 0)
 		consputc(buf[i]);
 }
+
+void cputc(int c)
+{
+	consputc(c);
+}
+
 //PAGEBREAK: 50
 
 // Print to the console. only understands %d, %x, %p, %s.
+// it's a kernel routine that **must be reliable**. So instead of call printfmt, it has a standalone
+// implementation.
 void
 cprintf(char *fmt, ...)
 {

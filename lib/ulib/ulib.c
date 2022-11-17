@@ -113,3 +113,15 @@ memmove(void *vdst, const void *vsrc, int n)
 	return vdst;
 }
 
+int strnlen(const char *s, int len)
+{
+	int i;
+	for (i = 0; i < len; i++)
+	{
+		if (s[i] == '\0')
+		{
+			return i;
+		}
+	}
+	return len;
+}

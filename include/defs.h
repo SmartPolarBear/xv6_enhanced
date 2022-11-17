@@ -30,6 +30,7 @@ void bwrite(struct buf *);
 // console.c
 void consoleinit(void);
 void cprintf(char *, ...);
+void cputc(int);
 void consoleintr(int(*)(void));
 
 // debug.c
@@ -283,3 +284,8 @@ int socketgetsockopt(struct socket *skt, int level, int optname, void *optval, i
 
 // pmm.c
 void pmminit(void);
+
+// printfmt.c
+int snprintf(char *buf, int n, const char *fmt, ...);
+#define sprintf(buf, fmt, ...) snprintf(buf, 256, fmt, __VA_ARGS__);
+void printfmt(void (*putch)(int, void *), void *putdat, const char *fmt, ...);
