@@ -125,6 +125,7 @@ target_compile_definitions(kernel
 add_dependencies(kernel vectors_S initcode_obj entryother_obj bootblock_obj)
 
 target_include_directories(kernel PRIVATE ../include)
+target_include_directories(kernel PRIVATE include)
 
 target_sources(kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/trapasm.S)
 target_sources(kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/vectors.S)

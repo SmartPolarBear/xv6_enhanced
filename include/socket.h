@@ -57,11 +57,11 @@ struct in_addr
 	unsigned long s_addr;  // load with inet_aton()
 };
 
-#define IFNAMSIZ 16
+#define INET_ADDRSTRLEN  16
 
 typedef struct ifreq
 {
-	char ifr_name[IFNAMSIZ]; /* Interface name */
+	char ifr_name[INET_ADDRSTRLEN]; /* Interface name */
 	union
 	{
 		struct sockaddr ifr_addr;
@@ -74,8 +74,8 @@ typedef struct ifreq
 		int ifr_metric;
 		int ifr_mtu;
 //      struct ifmap    ifr_map;
-		char ifr_slave[IFNAMSIZ];
-		char ifr_newname[IFNAMSIZ];
+		char ifr_slave[INET_ADDRSTRLEN];
+		char ifr_newname[INET_ADDRSTRLEN];
 		char *ifr_data;
 	};
 } ifreq_t;

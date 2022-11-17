@@ -22,6 +22,8 @@
 #include "lwip/udp.h"
 #include "lwip/dns.h"
 
+#include "internal/netdb.h"
+
 typedef struct
 {
 	uint16 xid;      /* Randomly chosen identifier */

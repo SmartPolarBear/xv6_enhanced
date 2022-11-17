@@ -11,6 +11,8 @@
 #include "proc.h"
 #include "memlayout.h"
 
+#include "internal/netdb.h"
+
 int sys_gethostbyname(void)
 {
 	char *name = NULL;
@@ -85,7 +87,9 @@ int sys_gethostbyname(void)
 		}
 	}
 
-//	netdb_dump_answer(ans);
+#ifdef NETDB_DEBUG
+	netdb_dump_answer(ans);
+#endif
 	netdb_free(ans);
 
 	host->h_addrtype = AF_INET;
@@ -143,7 +147,10 @@ int sys_gethostbyaddr(void)
 	inet_aton(name, (struct in_addr *)&addr);
 
 	*((uint32 *)p) = addr;
-	//	netdb_dump_answer(ans);
+
+#ifdef NETDB_DEBUG
+	netdb_dump_answer(ans);
+#endif
 	netdb_free(ans);
 
 	host->h_addrtype = AF_INET;

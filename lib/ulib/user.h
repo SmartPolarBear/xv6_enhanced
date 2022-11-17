@@ -1,6 +1,19 @@
 #pragma once
 #include "types.h"
 
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
+
+typedef char int8_t;
+typedef short int16_t;
+typedef int int32_t;
+typedef long long int64_t;
+
+typedef uint32_t size_t;
+typedef int32_t ssize_t;
+
 struct stat;
 struct rtcdate;
 struct sockaddr;
@@ -63,28 +76,6 @@ void *memset(void *, int, uint);
 void *malloc(uint);
 void free(void *);
 int atoi(const char *);
-
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
-
-typedef char int8_t;
-typedef short int16_t;
-typedef int int32_t;
-typedef long long int64_t;
-
-typedef uint32_t size_t;
-typedef int32_t ssize_t;
-
-// additional functions
-void hexdump(void *data, size_t size);
-uint16_t hton16(uint16_t h);
-uint16_t ntoh16(uint16_t n);
-uint32_t hton32(uint32_t h);
-uint32_t ntoh32(uint32_t n);
 long strtol(const char *s, char **endptr, int base);
-//int ip_addr_pton(const char *p, ip_addr_t *n);
 
-#define IP_ADDR_LEN 4
-#define IP_ADDR_STR_LEN 16 /* "ddd.ddd.ddd.ddd\0" */
+

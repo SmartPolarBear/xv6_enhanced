@@ -1,20 +1,45 @@
+// Created by Zhao Qi‘ao on 2022/11/15.
 //
-// Created by bear on 11/7/2022.
-//
+#include <user.h>
+#include <netdb.h>
+#include <socket.h>
+#include <inet.h>
 
-#include "types.h"
-#include "netdb.h"
-#include "user.h"
-
-int main()
+int main(int argc, char *argv[])
 {
-	struct hostent *host = (struct hostent *)gethostbyaddr("204.79.197.200");
-	if (host == NULL)
+	if (argc < 2)
 	{
-		printf(1, "gethostbyname failed");
+		printf(2, "Usage nslookup [-option] [name | -] [server]\n");
+		return -1;
 	}
+	char *hostname = argv[1];
 
-	printf(1, "h_name: %s\n", host->h_name);
-	printf(1, "h_addr: 0x%x\n", *((uint32_t *)(host->h_addr_list[0])));
+	struct hostent *hptr;
+	if (!(hptr = (struct hostent *)gethostbyname(hostname)))
+	{
+		printf(2, "Cannot query name %s\n", hostname);
+		return -1;
+	}
+	printf(1, "HOST NAME: %s\n", hptr->h_name);
+	char **p_alias = hptr->h_aliases;
+	char **p_addr = hptr->h_addr_list;
+	char str[INET_ADDRSTRLEN];
+	while (*p_alias)
+	{
+		printf(1, "ALIAS: %s\n", *p_alias);
+		p_alias++;
+	}
+	while (*p_addr)
+	{
+		if (hptr->h_addrtype == AF_INET)
+		{
+			printf(1, "ADDR: %s\n", inet_ntoa(*(struct in_addr *)*p_addr));
+			p_addr++;
+		}
+		else
+		{
+			printf(2, "Unknown Address Type\n");
+		}
+	}
 	return 0;
 }

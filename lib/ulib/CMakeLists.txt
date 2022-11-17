@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_library(ulib STATIC usys.S ulib.c printf.c umalloc.c entry.c)
+add_library(ulib STATIC usys.S ulib.c inet.c printf.c umalloc.c entry.c)
 
 target_include_directories(ulib BEFORE
     PUBLIC .
