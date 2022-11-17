@@ -254,7 +254,7 @@ void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 	uint16 response_flags = ntohs(response_header->flags);
 	if ((response_flags & 0xf) != 0 || (response_flags & 0x80) != 0x80)
 	{
-		return;
+		goto end;
 	}
 
 	uint8_t *start_of_name = (uint8_t * )(netdb_qbuf + sizeof(dns_header_t));
@@ -269,6 +269,7 @@ void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 
 	parse_result(response_header, (char *)field_length + 5);
 
+end:
 	pbuf_free(p);
 	wakeup(&dns_pcb);
 }

@@ -8,7 +8,7 @@
 
 int main()
 {
-	struct hostent *host = (struct hostent *)gethostbyname("cn.bing.com");
+	struct hostent *host = (struct hostent *)gethostbyaddr("204.79.197.200");
 	if (host == NULL)
 	{
 		printf(1, "gethostbyname failed");
