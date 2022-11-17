@@ -1,5 +1,7 @@
 #pragma once
 
+#define __REV__ "0.0.1"
+
 struct buf;
 struct context;
 struct file;
