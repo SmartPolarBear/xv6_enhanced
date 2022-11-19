@@ -16,6 +16,8 @@
 
 #include "net.h"
 #include "socket.h"
+#include "internal/socket.h"
+
 #include "lwip/tcp.h"
 #include "lwip/udp.h"
 #include "lwip/raw.h"
@@ -28,10 +30,30 @@ u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct pbuf *p,
 
 kmem_cache_t *socket_cache;
 
-static inline void addrin_byteswap(struct sockaddr_in *addr)
+extern sockopts_t tcp_opts;
+extern sockopts_t udp_opts;
+extern sockopts_t raw_opts;
+
+sockopts_t *sockopts[] = {
+	&tcp_opts,
+	&udp_opts,
+	&raw_opts,
+};
+
+static inline sockopts_t *find_sockopts(int type, int proto)
 {
-	addr->sin_port = byteswap16(addr->sin_port);
-	addr->sin_addr.addr = byteswap32(addr->sin_addr.addr);
+	for (int i = 0; i < NELEM(sockopts); i++)
+	{
+		if (sockopts[i]->meta.type == type && sockopts[i]->meta.protocol == proto)
+		{
+			return sockopts[i];
+		}
+		else if (sockopts[i]->meta.type == type && sockopts[i]->meta.protocol == -1) // match any protocol
+		{
+			return sockopts[i];
+		}
+	}
+	return NULL;
 }
 
 void socketinit(void)
@@ -51,13 +73,14 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 		return NULL;
 	}
 
-	if (type != SOCK_STREAM && type != SOCK_DGRAM)
+	if (type != SOCK_STREAM && type != SOCK_DGRAM && type != SOCK_RAW)
 	{
 		*err = -EINVAL;
 		return NULL;
 	}
 
-	if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP && protocol != IPPROTO_RAW)
+	if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP && protocol != IPPROTO_RAW
+		&& protocol != IPPROTO_ICMP)
 	{
 		*err = -EINVAL;
 		return NULL;
@@ -85,24 +108,39 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 
 	netbegin_op();
 
-	if (protocol == IPPROTO_TCP)
+	if (type == SOCK_STREAM)
 	{
-		socket->pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
+		if (protocol == IPPROTO_TCP)
+		{
+			socket->pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
+			if (socket->pcb == NULL)
+			{
+				*err = -ENOMEM;
+				goto free_sock;
+			}
+			tcp_arg(socket->pcb, socket);
+		}
 	}
-	else if (protocol == IPPROTO_UDP)
+	else if (type == SOCK_DGRAM)
 	{
-		socket->pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+		if (protocol == IPPROTO_UDP)
+		{
+			socket->pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+			if (socket->pcb == NULL)
+			{
+				*err = -ENOMEM;
+				goto free_sock;
+			}
+		}
 	}
-	else if (protocol == IPPROTO_RAW)
+	else if (type == SOCK_RAW)
 	{
 		socket->pcb = raw_new_ip_type(IPADDR_TYPE_ANY, 0/*only for IPv6*/);
 	}
 	else
 	{
-		*err = -EPROTONOSUPPORT;
+		*err = -ESOCKTNOSUPPORT;
 	}
-
-	tcp_arg(socket->pcb, socket);
 
 	netend_op();
 
@@ -113,6 +151,11 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 
 	*err = 0;
 	return file;
+
+free_sock:
+	kmem_cache_free(socket_cache, socket);
+	netend_op();
+	return NULL;
 }
 
 void socketclose(socket_t *skt)
@@ -127,17 +170,17 @@ void socketclose(socket_t *skt)
 
 	if (skt->pcb)
 	{
-		if (skt->protocol == IPPROTO_TCP)
+		if (skt->type == SOCK_STREAM)
 		{
 			tcp_close(skt->pcb);
 			tcp_close(skt->pcb); // ? why twice?
 		}
-		else if (skt->protocol == IPPROTO_UDP)
+		else if (skt->type == SOCK_DGRAM)
 		{
 			udp_disconnect(skt->pcb);
 			udp_remove(skt->pcb);
 		}
-		else if (skt->protocol == IPPROTO_RAW)
+		else if (skt->type == SOCK_RAW)
 		{
 			raw_remove(skt->pcb);
 		}
@@ -166,12 +209,7 @@ void socketclose(socket_t *skt)
 
 int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 {
-	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
-	{
-		return -EPROTONOSUPPORT;
-	}
-
-	if (skt->type != SOCK_STREAM)
+	if (skt->type != SOCK_STREAM && skt->type != SOCK_RAW)
 	{
 		return -EOPNOTSUPP;
 	}

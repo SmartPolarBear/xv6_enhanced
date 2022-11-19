@@ -34,6 +34,7 @@ typedef ip4_addr_t ip_addr_t;
 #define IPPROTO_TCP 0
 #define IPPROTO_UDP 1
 #define IPPROTO_RAW 2
+#define IPPROTO_ICMP 3
 
 #define INADDR_ANY ((ip_addr_t){.s_addr=0})
 
