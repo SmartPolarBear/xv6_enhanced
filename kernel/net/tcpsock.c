@@ -268,12 +268,12 @@ int tcprecv(struct socket *s, void *buf, int len, int flags)
 
 int tcpsendto(struct socket *s, void *buf, int len, int flags, struct sockaddr *addr, int addrlen)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int tcprecvfrom(struct socket *s, void *buf, int len, int flags, struct sockaddr *addr, int *addrlen)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int tcpclose(struct socket *s)

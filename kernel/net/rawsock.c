@@ -107,12 +107,12 @@ int rawbind(struct socket *s, struct sockaddr *addr, int addrlen)
 
 int rawlisten(struct socket *s, int backlog)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int rawaccept(struct socket *s, struct socket *newsock, struct sockaddr *addr, int *addrlen)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int rawsend(struct socket *s, void *buf, int len, int flags)

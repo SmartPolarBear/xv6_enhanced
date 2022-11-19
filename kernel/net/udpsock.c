@@ -70,7 +70,7 @@ int udpalloc(struct socket *s)
 
 int udpconnect(struct socket *s, struct sockaddr *addr, int addrlen)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int udpbind(struct socket *s, struct sockaddr *addr, int addrlen)
@@ -95,12 +95,12 @@ int udpbind(struct socket *s, struct sockaddr *addr, int addrlen)
 
 int udplisten(struct socket *s, int backlog)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int udpaccept(struct socket *s, struct socket *newsock, struct sockaddr *addr, int *addrlen)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int udpsend(struct socket *s, void *buf, int len, int flags)
@@ -136,7 +136,7 @@ int udpsend(struct socket *s, void *buf, int len, int flags)
 
 int udprecv(struct socket *s, void *buf, int len, int flags)
 {
-	return -EOPNOTSUPP;
+	return -EPROTONOSUPPORT;
 }
 
 int udpsendto(struct socket *s, void *buf, int len, int flags, struct sockaddr *addr, int addrlen)
