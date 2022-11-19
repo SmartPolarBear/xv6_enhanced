@@ -384,14 +384,6 @@ int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *
 		return -EINVAL;
 	}
 
-	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
-	addrin_byteswap(in_addr);
-
-	if (in_addr->sin_family != AF_INET)
-	{
-		return -EAFNOSUPPORT;
-	}
-
 	return skt->opts->sendto(skt, buf, len, flags, addr, addrlen);
 }
 

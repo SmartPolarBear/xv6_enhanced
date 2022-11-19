@@ -143,6 +143,10 @@ int udpsendto(struct socket *s, void *buf, int len, int flags, struct sockaddr *
 {
 	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
 	addrin_byteswap(in_addr);
+	if (in_addr->sin_family != AF_INET)
+	{
+		return -EAFNOSUPPORT;
+	}
 
 	netbegin_op();
 	struct udp_pcb *pcb = (struct udp_pcb *)s->pcb;
