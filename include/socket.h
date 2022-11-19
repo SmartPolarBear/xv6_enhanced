@@ -31,10 +31,11 @@ typedef ip4_addr_t ip_addr_t;
 #define SOCK_DGRAM  2
 #define SOCK_RAW    3
 
-#define IPPROTO_TCP 0
-#define IPPROTO_UDP 1
-#define IPPROTO_RAW 2
-#define IPPROTO_ICMP 3
+#define IPPROTO_IP  0
+#define IPPROTO_TCP 1
+#define IPPROTO_UDP 2
+#define IPPROTO_RAW 3
+#define IPPROTO_ICMP 4
 
 typedef struct sockaddr
 {
@@ -144,3 +145,8 @@ typedef struct ifreq
 #define SO_PROTOCOL                38
 #define SO_DOMAIN                39
 
+#define        IP_OPTIONS      4       /* ip_opts; IP per-packet options.  */
+#define        IP_HDRINCL      3       /* int; Header is included with data.  */
+#define        IP_TOS          1       /* int; IP type of service and precedence.  */
+#define        IP_TTL          2       /* int; IP time to live.  */
+#define        IP_RECVOPTS     6       /* bool; Receive all IP options w/datagram.  */
