@@ -18,9 +18,7 @@
 #include "socket.h"
 #include "internal/socket.h"
 
-#include "lwip/tcp.h"
-#include "lwip/udp.h"
-#include "lwip/raw.h"
+#include "lwip/pbuf.h"
 
 kmem_cache_t *socket_cache;
 
@@ -475,6 +473,28 @@ int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *o
 			*(int *)optval = SOCK_STREAM;
 			*optlen = sizeof(int);
 			return 0;
+		}
+		break;
+	}
+	return -EINVAL;
+}
+
+int socksetsockopt(socket_t *skt, int level, int optname, void *optval, int optlen)
+{
+	switch (skt->type)
+	{
+	case IPPROTO_TCP:
+		switch (optname)
+		{
+		case SO_TYPE:
+			return -EINVAL;
+		}
+		break;
+	case IPPROTO_UDP:
+		switch (optname)
+		{
+		case SO_TYPE:
+			return -EINVAL;
 		}
 		break;
 	}

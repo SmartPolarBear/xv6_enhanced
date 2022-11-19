@@ -19,6 +19,7 @@ struct rtcdate;
 struct sockaddr;
 
 // system calls
+int time(int *);
 int fork(void);
 int exit(int) __attribute__((noreturn));
 int wait(int *);
@@ -60,6 +61,7 @@ int send(int, char *, int);
 int recvfrom(int, char *, int, int, struct sockaddr *, int *);
 int sendto(int, char *, int, int, struct sockaddr *, int);
 int getsockopt(int, int, int, char *, int *);
+int setsockopt(int, int, int, char *, int);
 int gethostbyname(char *);
 int gethostbyaddr(char *);
 
@@ -80,3 +82,5 @@ long strtol(const char *s, char **endptr, int base);
 int strnlen(const char *, int);
 
 int snprintf(char *buf, int n, const char *fmt, ...);
+
+#define clock uptime

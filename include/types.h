@@ -29,12 +29,14 @@ typedef long long int64;
 typedef uint pde_t;
 typedef uint gfp_t;
 
-#ifdef __KERNEL__
+#ifndef __HOSTTOOL__
 typedef uint32 size_t;
 typedef int32 ssize_t;
 typedef uint32 uintptr_t;
 typedef int32 time_t;
 typedef uint pid_t;
+
+typedef uint32 clock_t;
 #endif
 
 

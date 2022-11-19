@@ -86,7 +86,7 @@ add_executable(kernel
         bio.c
         console.c
         debug.c
-        date.c
+        datetime.c
         exec.c
         file.c
         fs.c
@@ -112,6 +112,7 @@ add_executable(kernel
         syscall.c
         sysfile.c
         sysproc.c
+        sysdatetime.c
         trap.c
         uart.c
         vfs.c

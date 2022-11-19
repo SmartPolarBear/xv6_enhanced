@@ -283,6 +283,7 @@ int socketioctl(struct socket *, int, void *);
 int socketsendto(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen);
 int socketrecvfrom(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen);
 int socketgetsockopt(struct socket *skt, int level, int optname, void *optval, int *optlen);
+int socksetsockopt(struct socket *skt, int level, int optname, void *optval, int optlen);
 
 // pmm.c
 void pmminit(void);

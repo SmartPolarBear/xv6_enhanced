@@ -21,4 +21,4 @@ uint32_t ntoh32(uint32_t n);
 
 int inet_aton(const char *cp, struct in_addr *ap);
 char *inet_ntoa(struct in_addr in);
-
+in_addr_t inet_addr(const char *cp);

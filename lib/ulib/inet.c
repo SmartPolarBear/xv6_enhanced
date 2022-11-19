@@ -268,3 +268,15 @@ char *inet_ntoa(struct in_addr in)
 	snprintf(buf, INET_ADDRSTRLEN, "%d.%d.%d.%d", p[3], p[2], p[1], p[0]);
 	return buf;
 }
+
+in_addr_t inet_addr(const char *cp)
+{
+	struct in_addr val;
+
+	if (inet_aton(cp, &val))
+	{
+		return val.s_addr;
+	}
+
+	return INADDR_NONE;
+}

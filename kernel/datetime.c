@@ -3,6 +3,7 @@
 //
 #include "types.h"
 #include "date.h"
+#include "defs.h"
 
 #define SEC_PER_MIN         60
 #define SEC_PER_HOUR        3600

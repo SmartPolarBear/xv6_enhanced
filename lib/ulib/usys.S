@@ -9,12 +9,13 @@
     ret
 
 #define PSYSCALL(name) \
-  .globl $__ ## name; \
-  $__ ## name: \
+  .globl __##name; \
+  __##name: \
     movl $SYS_ ## name, %eax; \
     int $T_SYSCALL; \
     ret
 
+SYSCALL(time)
 SYSCALL(fork)
 SYSCALL(exit)
 SYSCALL(wait)
@@ -55,5 +56,6 @@ SYSCALL(recvfrom)
 SYSCALL(getsockopt)
 SYSCALL(gethostbyname)
 SYSCALL(gethostbyaddr)
+SYSCALL(setsockopt)
 
 PSYSCALL(error)
