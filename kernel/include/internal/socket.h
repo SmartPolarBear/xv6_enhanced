@@ -29,3 +29,31 @@ static inline void addrin_byteswap(struct sockaddr_in *addr)
 	addr->sin_addr.addr = byteswap32(addr->sin_addr.addr);
 }
 
+typedef struct socket
+{
+	void *pcb;
+	struct file *file;
+	struct pbuf *recv_buf;
+	int recv_offset;
+	int recv_closed;
+
+	struct
+	{
+		sockaddr_in_t recv_addr;
+		int recv_addrlen;
+		int recv_len;
+	} recvfrom_params;
+
+	struct socket *backlog[SOCKET_NBACKLOG];
+	int protocol;
+	int type;
+
+	char connect_chan;
+	char accept_chan;
+	char recv_chan;
+	int wakeup_retcode;
+
+	sockopts_t *opts;
+
+	spinlock_t lock;
+} socket_t;
