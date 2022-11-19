@@ -22,12 +22,6 @@
 #include "lwip/udp.h"
 #include "lwip/raw.h"
 
-void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
-							const ip_addr_t *addr, u16_t port);
-
-u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct pbuf *p,
-							const ip_addr_t *addr);
-
 kmem_cache_t *socket_cache;
 
 extern sockopts_t tcp_opts;
@@ -105,44 +99,19 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 	socket->type = type;
 	socket->protocol = protocol;
 	socket->file = file;
-
-	netbegin_op();
-
-	if (type == SOCK_STREAM)
-	{
-		if (protocol == IPPROTO_TCP)
-		{
-			socket->pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
-			if (socket->pcb == NULL)
-			{
-				*err = -ENOMEM;
-				goto free_sock;
-			}
-			tcp_arg(socket->pcb, socket);
-		}
-	}
-	else if (type == SOCK_DGRAM)
-	{
-		if (protocol == IPPROTO_UDP)
-		{
-			socket->pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
-			if (socket->pcb == NULL)
-			{
-				*err = -ENOMEM;
-				goto free_sock;
-			}
-		}
-	}
-	else if (type == SOCK_RAW)
-	{
-		socket->pcb = raw_new_ip_type(IPADDR_TYPE_ANY, 0/*only for IPv6*/);
-	}
-	else
+	socket->opts = find_sockopts(type, protocol);
+	if (socket->opts == NULL)
 	{
 		*err = -ESOCKTNOSUPPORT;
+		goto free_sock;
 	}
 
-	netend_op();
+	int ret = socket->opts->alloc(socket);
+	if (ret < 0)
+	{
+		*err = ret;
+		goto free_sock;
+	}
 
 	file->type = FD_SOCKET;
 	file->socket = socket;
@@ -161,33 +130,18 @@ free_sock:
 void socketclose(socket_t *skt)
 {
 	netbegin_op();
-
 	if (skt->recv_buf)
 	{
 		pbuf_free(skt->recv_buf);
 		skt->recv_buf = NULL;
 	}
+	netend_op();
 
 	if (skt->pcb)
 	{
-		if (skt->type == SOCK_STREAM)
-		{
-			tcp_close(skt->pcb);
-			tcp_close(skt->pcb); // ? why twice?
-		}
-		else if (skt->type == SOCK_DGRAM)
-		{
-			udp_disconnect(skt->pcb);
-			udp_remove(skt->pcb);
-		}
-		else if (skt->type == SOCK_RAW)
-		{
-			raw_remove(skt->pcb);
-		}
-
+		KDEBUG_ASSERT(!skt->opts->close(skt));
 		skt->pcb = NULL;
 	}
-	netend_op();
 
 	for (int i = 0; i < SOCKET_NBACKLOG; i++)
 	{
@@ -214,34 +168,9 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 		return -EOPNOTSUPP;
 	}
 
-	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
-	addrin_byteswap(addr_in);
+	int ret = skt->opts->connect(skt, addr, addr_len);
 
-	netbegin_op();
-
-	err_t err = -1;
-	if (skt->protocol == IPPROTO_TCP)
-	{
-		err = tcp_connect(skt->pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port, NULL);
-		if (err != ERR_OK)
-		{
-			netend_op();
-			return -ECONNREFUSED;
-		}
-	}
-	else if (skt->protocol == IPPROTO_RAW)
-	{
-		err = raw_connect(skt->pcb, (ip_addr_t *)&addr_in->sin_addr);
-		if (err != ERR_OK)
-		{
-			netend_op();
-			return -ECONNREFUSED;
-		}
-	}
-
-	netend_op();
-
-	if (err == ERR_OK)
+	if (!ret)
 	{
 		acquire(&skt->lock);
 		skt->wakeup_retcode = 0;
@@ -256,94 +185,31 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 		return 0;
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 {
-	sockaddr_in_t *addr_in = (sockaddr_in_t *)addr;
-	addrin_byteswap(addr_in);
-
-	if (skt->protocol != IPPROTO_TCP &&
-		skt->protocol != IPPROTO_UDP &&
-		skt->protocol != IPPROTO_RAW)
-	{
-		return -EINVAL;
-	}
-
 	if (skt->type != SOCK_STREAM && skt->type != SOCK_DGRAM)
 	{
 		return -EOPNOTSUPP;
 	}
 
-	netbegin_op();
-	err_t err = -1;
-	if (skt->protocol == IPPROTO_TCP)
-	{
-		struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-		err = tcp_bind(pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port);
-	}
-	else if (skt->protocol == IPPROTO_UDP)
-	{
-		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
-		err = udp_bind(pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port);
-	}
-	else if (skt->protocol == IPPROTO_RAW)
-	{
-		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
-		err = raw_bind(pcb, (ip_addr_t *)&addr_in->sin_addr);
-	}
-	netend_op();
-
-	if (err == ERR_OK)
-	{
-		return 0;
-	}
-	else if (err == ERR_USE)
-	{
-		return -EADDRINUSE;
-	}
-
-	return -EINVAL;
+	return skt->opts->bind(skt, addr, addr_len);
 }
 
 int socketlisten(socket_t *skt, int backlog)
 {
-	if (skt->protocol != IPPROTO_TCP)
-	{
-		return -EINVAL;
-	}
-
 	if (skt->type != SOCK_STREAM)
 	{
 		return -EOPNOTSUPP;
 	}
 
-	netbegin_op();
-
-	struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-	err_t err = 0;
-	pcb = tcp_listen_with_backlog_and_err(pcb, backlog, &err);
-	skt->pcb = pcb;
-
-	netend_op();
-
-	if (err == ERR_OK)
-	{
-		return 0;
-	}
-
-	return -EINVAL;
+	return skt->opts->listen(skt, backlog);
 }
 
 struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, int *err)
 {
-	if (skt->protocol != IPPROTO_TCP)
-	{
-		*err = -EINVAL;
-		return NULL;
-	}
-
 	if (skt->type != SOCK_STREAM)
 	{
 		*err = -EOPNOTSUPP;
@@ -411,29 +277,15 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	file->readable = TRUE;
 	file->writable = TRUE;
 
-	struct tcp_pcb *newpcb = socket->pcb;
-
-	struct sockaddr_in *in_addr = (struct sockaddr_in *)addr;
-	in_addr->sin_addr = newpcb->remote_ip;
-	in_addr->sin_port = newpcb->remote_port;
-	in_addr->sin_family = AF_INET;
-	addrin_byteswap(in_addr);
-
-	*addrlen = sizeof(struct sockaddr_in);
+	*err = skt->opts->accept(skt, socket, addr, addrlen);
 
 	skt->backlog[avail] = NULL;
 
-	*err = 0;
 	return file;
 }
 
 int socketrecv(socket_t *skt, char *buf, int len, int flags)
 {
-	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
-	{
-		return -EPROTONOSUPPORT;
-	}
-
 	if (skt->type != SOCK_STREAM)
 	{
 		return -EOPNOTSUPP;
@@ -457,13 +309,10 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 	}
 	else
 	{
-		if (skt->protocol == IPPROTO_RAW)
+		int err = skt->opts->recv(skt, buf, len, flags);
+		if (err)
 		{
-			skt->recvfrom_params.recv_len = len;
-			netbegin_op();
-			struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
-			raw_recv(pcb, lwip_raw_recv_callback, skt);
-			netend_op();
+			return err;
 		}
 
 		while (!skt->recv_buf)
@@ -483,6 +332,7 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 			}
 		}
 	}
+
 	netbegin_op();
 
 	len = pbuf_copy_partial(skt->recv_buf, buf, len, skt->recv_offset);
@@ -503,158 +353,17 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 
 int socketsend(socket_t *skt, char *buf, int len, int flags)
 {
-	if (skt->protocol != IPPROTO_TCP && skt->protocol != IPPROTO_RAW)
-	{
-		return -EPROTONOSUPPORT;
-	}
-
 	if (skt->type != SOCK_STREAM)
 	{
 		return -EOPNOTSUPP;
 	}
 
-	if (skt->protocol == IPPROTO_TCP)
-	{
-		struct tcp_pcb *pcb = (struct tcp_pcb *)skt->pcb;
-		if (!pcb)
-		{
-			return -ECONNRESET;
-		}
-
-		if (!pcb->snd_buf)
-		{
-			return -EAGAIN;
-		}
-
-		netbegin_op();
-
-		len = MIN(len, pcb->snd_buf);
-		err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
-
-		if (err == ERR_MEM)
-		{
-			netend_op();
-			return -ENOMEM;
-		}
-		else if (err != ERR_OK)
-		{
-			netend_op();
-			return -ECONNABORTED;
-		}
-
-		err = tcp_output(pcb);
-		if (err == ERR_OK)
-		{
-			netend_op();
-			return len; // succeeded
-		}
-
-		if (err == ERR_MEM)
-		{
-			netend_op();
-			return -EAGAIN;
-		}
-
-
-		// error condition
-		netend_op();
-	}
-	else if (skt->protocol == IPPROTO_UDP)
-	{
-		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
-		if (!pcb)
-		{
-			return -ECONNRESET;
-		}
-
-		netbegin_op();
-		struct pbuf *pb = pbuf_alloc(PBUF_IP, len, PBUF_RAM);
-		err_t err = pbuf_take(pb, buf, len);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ENOMEM;
-		}
-
-		err = udp_send(pcb, pb);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ECONNABORTED;
-		}
-
-		pbuf_free(pb);
-		netend_op();
-	}
-	else if (skt->protocol == IPPROTO_RAW)
-	{
-		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
-		if (!pcb)
-		{
-			return -ECONNRESET;
-		}
-
-		netbegin_op();
-		struct pbuf *pb = pbuf_alloc(PBUF_IP, len, PBUF_RAM);
-		err_t err = pbuf_take(pb, buf, len);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ENOMEM;
-		}
-
-		err = raw_send(pcb, pb);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ECONNABORTED;
-		}
-
-		pbuf_free(pb);
-		netend_op();
-	}
-
-	return -ECONNABORTED;
-}
-
-int socketioctl(socket_t *skt, int req, void *arg)
-{
-	return 0;
-}
-
-int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *optlen)
-{
-	switch (skt->type)
-	{
-	case IPPROTO_TCP:
-		switch (optname)
-		{
-		case SO_TYPE:
-			*(int *)optval = SOCK_STREAM;
-			*optlen = sizeof(int);
-			return 0;
-		}
-		break;
-	case IPPROTO_UDP:
-		switch (optname)
-		{
-		case SO_TYPE:
-			*(int *)optval = SOCK_STREAM;
-			*optlen = sizeof(int);
-			return 0;
-		}
-		break;
-	}
-	return -EINVAL;
+	return skt->opts->send(skt, buf, len, flags);
 }
 
 int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen)
 {
-	if (skt->protocol != IPPROTO_UDP && skt->protocol != IPPROTO_RAW)
+	if (skt->type != SOCK_DGRAM)
 	{
 		if (addr)
 		{
@@ -683,71 +392,11 @@ int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *
 		return -EAFNOSUPPORT;
 	}
 
-	netbegin_op();
-
-	if (skt->protocol == IPPROTO_UDP)
-	{
-		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
-		if (!pcb)
-		{
-			return -ECONNRESET;
-		}
-		struct pbuf *pb = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
-		if (!pb)
-		{
-			netend_op();
-			return -ENOMEM;
-		}
-
-		err_t err = pbuf_take(pb, buf, len);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ENOMEM;
-		}
-
-		err = udp_sendto(pcb, pb, &in_addr->sin_addr, in_addr->sin_port);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ECONNABORTED;
-		}
-
-		pbuf_free(pb);
-	}
-	else if (skt->protocol == IPPROTO_RAW)
-	{
-		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
-		struct pbuf *pb = pbuf_alloc(PBUF_IP, len, PBUF_RAM);
-		err_t err = pbuf_take(pb, buf, len);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ENOMEM;
-		}
-
-		err = raw_sendto(pcb, pb, &in_addr->sin_addr);
-		if (err != ERR_OK)
-		{
-			pbuf_free(pb);
-			netend_op();
-			return -ECONNABORTED;
-		}
-
-		pbuf_free(pb);
-	}
-
-	netend_op();
-
-	return -EINVAL;
+	return skt->opts->sendto(skt, buf, len, flags, addr, addrlen);
 }
 
 int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen)
 {
-
 	if (skt->type != SOCK_DGRAM)
 	{
 		if (addr)
@@ -761,31 +410,10 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 
 	skt->recvfrom_params.recv_len = len;
 
-	if (skt->protocol == IPPROTO_UDP)
+	int err = skt->opts->recvfrom(skt, buf, len, flags, addr, addrlen);
+	if (err)
 	{
-
-		struct udp_pcb *pcb = (struct udp_pcb *)skt->pcb;
-		if (!pcb)
-		{
-			return -ECONNRESET;
-		}
-
-		netbegin_op();
-		udp_recv(pcb, lwip_udp_recv_callback, skt);
-		netend_op();
-	}
-	else if (skt->protocol == IPPROTO_RAW)
-	{
-
-		struct raw_pcb *pcb = (struct raw_pcb *)skt->pcb;
-		if (!pcb)
-		{
-			return -ECONNRESET;
-		}
-
-		netbegin_op();
-		raw_recv(pcb, lwip_raw_recv_callback, skt);
-		netend_op();
+		return err;
 	}
 
 	if (skt->recv_buf == NULL)
@@ -830,169 +458,33 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 	return len;
 }
 
-err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
-					 u16_t size, err_t err)
+int socketioctl(socket_t *skt, int req, void *arg)
 {
-	socket_t *socket = (socket_t *)arg;
+	return 0;
+}
 
-	switch (event)
+int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *optlen)
+{
+	switch (skt->type)
 	{
-	case LWIP_EVENT_ACCEPT:
-		if (err == ERR_OK)
+	case IPPROTO_TCP:
+		switch (optname)
 		{
-			int free = 0;
-			for (free = 0; free < SOCKET_NBACKLOG; ++free)
-			{
-				if (!socket->backlog[free])
-				{
-					break;
-				}
-			}
-			// queue full
-			if (free >= SOCKET_NBACKLOG)
-			{
-				return ERR_MEM;
-			}
-			socket_t *newsocket = kmem_cache_alloc(socket_cache);
-			memset(newsocket, 0, sizeof(socket_t));
-
-			// the passed in pcb is for the new socket
-			newsocket->pcb = pcb;
-
-			netbegin_op();
-			tcp_arg(pcb, newsocket);
-			netend_op();
-
-			newsocket->protocol = socket->protocol;
-			newsocket->type = socket->type;
-
-			socket->backlog[free] = newsocket;
-
-			socket->wakeup_retcode = 0;
-			wakeup(&socket->accept_chan);
+		case SO_TYPE:
+			*(int *)optval = SOCK_STREAM;
+			*optlen = sizeof(int);
+			return 0;
 		}
-		return ERR_OK;
-	case LWIP_EVENT_SENT:
-		/* ignore */
-		return ERR_OK;
-	case LWIP_EVENT_RECV:
-		/* closed or error */
-		if (!p || err != ERR_OK)
+		break;
+	case IPPROTO_UDP:
+		switch (optname)
 		{
-			if (p)
-			{
-				netbegin_op();
-				pbuf_free(p);
-				netend_op();
-			}
-			socket->recv_closed = TRUE;
-			return ERR_OK;
+		case SO_TYPE:
+			*(int *)optval = SOCK_STREAM;
+			*optlen = sizeof(int);
+			return 0;
 		}
-		// buffer hasn't been received
-		if (socket->recv_buf)
-		{
-			return ERR_MEM;
-		}
-		/* ack the packet */
-		netbegin_op();
-		tcp_recved(socket->pcb, p->tot_len);
-		netend_op();
-
-		socket->recv_buf = p;
-		socket->recv_offset = 0;
-
-		socket->wakeup_retcode = 0;
-		wakeup(&socket->recv_chan);
-		return ERR_OK;
-	case LWIP_EVENT_CONNECTED:
-		if (err != ERR_OK)
-		{
-			socket->wakeup_retcode = -ECONNRESET;
-		}
-		else
-		{
-			socket->wakeup_retcode = 0;
-		}
-
-		wakeup(&socket->connect_chan);
-		return ERR_OK;
-	case LWIP_EVENT_POLL:
-		/* ignore */
-		return ERR_OK;
-	case LWIP_EVENT_ERR:
-		/* pcb is already deallocated */
-		socket->pcb = NULL;
-		// do nothing. de-allocation will be done by exit() or manually by the user
-		return ERR_ABRT;
-	default:
 		break;
 	}
-
-	KDEBUG_UNREACHABLE;
-}
-
-void lwip_udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p,
-							const ip_addr_t *addr, u16_t port)
-{
-	socket_t *socket = (socket_t *)arg;
-	socket->recvfrom_params.recv_addr.sin_addr.addr = addr->addr;
-	socket->recvfrom_params.recv_addr.sin_port = port;
-	socket->recvfrom_params.recv_addr.sin_family = AF_INET;
-
-	if (!p || p->tot_len > socket->recvfrom_params.recv_len)
-	{
-		if (p)
-		{
-			netbegin_op();
-			pbuf_free(p);
-			netend_op();
-		}
-		socket->recv_closed = TRUE;
-		return;
-	}
-	// buffer hasn't been received
-	if (socket->recv_buf)
-	{
-		return;
-	}
-
-	socket->recv_buf = p;
-	socket->recv_offset = 0;
-
-	socket->wakeup_retcode = 0;
-	wakeup(&socket->recv_chan);
-}
-
-u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct pbuf *p,
-							const ip_addr_t *addr)
-{
-	socket_t *socket = (socket_t *)arg;
-	socket->recvfrom_params.recv_addr.sin_addr.addr = addr->addr;
-	socket->recvfrom_params.recv_addr.sin_port = 0;
-	socket->recvfrom_params.recv_addr.sin_family = AF_INET;
-
-	if (!p || p->tot_len > socket->recvfrom_params.recv_len)
-	{
-		if (p)
-		{
-			netbegin_op();
-			pbuf_free(p);
-			netend_op();
-		}
-		socket->recv_closed = TRUE;
-		return 0;
-	}
-	// buffer hasn't been received
-	if (socket->recv_buf)
-	{
-		return 0;
-	}
-
-	socket->recv_buf = p;
-	socket->recv_offset = 0;
-
-	socket->wakeup_retcode = 0;
-	wakeup(&socket->recv_chan);
-
-	return p->tot_len;
+	return -EINVAL;
 }

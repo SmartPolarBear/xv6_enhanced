@@ -28,7 +28,7 @@ sys_socket(void)
 
 	int err = 0;
 	f = socketalloc(domain, type, protocol, &err);
-	if (err != 0 || (fd = fdalloc(f)) < 0)
+	if (err != 0 || !f || (fd = fdalloc(f)) < 0)
 	{
 		if (f)
 		{

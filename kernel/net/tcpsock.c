@@ -23,6 +23,110 @@
 #include "lwip/udp.h"
 #include "lwip/raw.h"
 
+extern kmem_cache_t *socket_cache;
+
+err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
+					 u16_t size, err_t err)
+{
+	socket_t *socket = (socket_t *)arg;
+
+	switch (event)
+	{
+	case LWIP_EVENT_ACCEPT:
+		if (err == ERR_OK)
+		{
+			int free = 0;
+			for (free = 0; free < SOCKET_NBACKLOG; ++free)
+			{
+				if (!socket->backlog[free])
+				{
+					break;
+				}
+			}
+			// queue full
+			if (free >= SOCKET_NBACKLOG)
+			{
+				return ERR_MEM;
+			}
+			socket_t *newsocket = kmem_cache_alloc(socket_cache);
+			memset(newsocket, 0, sizeof(socket_t));
+
+			// the passed in pcb is for the new socket
+			newsocket->pcb = pcb;
+
+			netbegin_op();
+			tcp_arg(pcb, newsocket);
+			netend_op();
+
+			newsocket->protocol = socket->protocol;
+			newsocket->type = socket->type;
+			newsocket->opts = socket->opts;
+
+			socket->backlog[free] = newsocket;
+
+			socket->wakeup_retcode = 0;
+			wakeup(&socket->accept_chan);
+		}
+		return ERR_OK;
+	case LWIP_EVENT_SENT:
+		/* ignore */
+		return ERR_OK;
+	case LWIP_EVENT_RECV:
+		/* closed or error */
+		if (!p || err != ERR_OK)
+		{
+			if (p)
+			{
+				netbegin_op();
+				pbuf_free(p);
+				netend_op();
+			}
+			socket->recv_closed = TRUE;
+			return ERR_OK;
+		}
+		// buffer hasn't been received
+		if (socket->recv_buf)
+		{
+			return ERR_MEM;
+		}
+		/* ack the packet */
+		netbegin_op();
+		tcp_recved(socket->pcb, p->tot_len);
+		netend_op();
+
+		socket->recv_buf = p;
+		socket->recv_offset = 0;
+
+		socket->wakeup_retcode = 0;
+		wakeup(&socket->recv_chan);
+		return ERR_OK;
+	case LWIP_EVENT_CONNECTED:
+		if (err != ERR_OK)
+		{
+			socket->wakeup_retcode = -ECONNRESET;
+		}
+		else
+		{
+			socket->wakeup_retcode = 0;
+		}
+
+		wakeup(&socket->connect_chan);
+		return ERR_OK;
+	case LWIP_EVENT_POLL:
+		/* ignore */
+		return ERR_OK;
+	case LWIP_EVENT_ERR:
+		/* pcb is already deallocated */
+		socket->pcb = NULL;
+		// do nothing. de-allocation will be done by exit() or manually by the user
+		return ERR_ABRT;
+	default:
+		break;
+	}
+
+	KDEBUG_UNREACHABLE;
+}
+
 int tcpalloc(struct socket *socket)
 {
 	netbegin_op();
