@@ -117,15 +117,13 @@ int ping(in_addr_t ip, uint16_t nSeq)
 	static int nCount = 0;
 	long nRet;
 
-	pIcmp->icmp_id = hton16(1);
 	pIcmp->icmp_checksum = 0;
 	pIcmp->icmp_timestamp = clock();
 	pIcmp->icmp_sequence = hton16(nSeq++);
-	pIcmp->icmp_checksum = checksum((uint16_t *)buff, sizeof(ICMP_HDR) + 32 - 4);
-	nRet = (long)sendto(sRaw, buff, sizeof(ICMP_HDR) + 32 - 4,
+	pIcmp->icmp_checksum = checksum((uint16_t *)buff, sizeof(ICMP_HDR) + 32);
+	nRet = (long)sendto(sRaw, buff, sizeof(ICMP_HDR) + 32,
 						0, (struct sockaddr *)&dest, sizeof(dest));
 
-	printf(1, "fuck1!\n");
 	if (nRet == -1)
 	{
 		printf(1, " sendto() failed: %d \n", errno);
@@ -137,7 +135,6 @@ int ping(in_addr_t ip, uint16_t nSeq)
 		printf(1, " recvfrom() failed: %d\n", errno);
 		return -1;
 	}
-	printf(1, "fuck2!\n");
 
 	// 下面开始解析接收到的ICMP封包
 	clock_t nTick = clock();
