@@ -361,7 +361,7 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 
 int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen)
 {
-	if (skt->type != SOCK_DGRAM)
+	if (skt->type == SOCK_STREAM)
 	{
 		if (addr)
 		{
@@ -387,7 +387,7 @@ int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *
 
 int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen)
 {
-	if (skt->type != SOCK_DGRAM)
+	if (skt->type == SOCK_STREAM)
 	{
 		if (addr)
 		{

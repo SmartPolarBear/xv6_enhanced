@@ -56,8 +56,24 @@ static inline u8_t lwip_raw_recv_callback(void *arg, struct raw_pcb *pcb, struct
 
 int rawalloc(struct socket *socket)
 {
+	uint8 proto = 0;
+	switch (socket->protocol)
+	{
+	case IPPROTO_TCP:
+		proto = IP_PROTO_TCP;
+		break;
+	case IPPROTO_UDP:
+		proto = IP_PROTO_UDP;
+		break;
+	case IPPROTO_ICMP:
+		proto = IP_PROTO_ICMP;
+		break;
+	default:
+		return -EPROTONOSUPPORT;
+	}
+
 	netbegin_op();
-	socket->pcb = raw_new_ip_type(IPADDR_TYPE_ANY, 0/*only for IPv6*/);
+	socket->pcb = raw_new_ip_type(IPADDR_TYPE_ANY, proto);
 	if (socket->pcb == NULL)
 	{
 		netend_op();
@@ -190,7 +206,7 @@ int rawsendto(struct socket *s, void *buf, int len, int flags, struct sockaddr *
 	pbuf_free(pb);
 	netend_op();
 
-	return 0;
+	return len;
 }
 
 int rawrecvfrom(struct socket *s, void *buf, int len, int flags, struct sockaddr *addr, int *addrlen)

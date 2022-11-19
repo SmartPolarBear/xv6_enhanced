@@ -4,16 +4,17 @@
 #include <inet.h>
 
 typedef int SOCKET;
+
 typedef struct ICMP_HDR
 {
-	unsigned char icmp_type; // 消息类型
-	unsigned char icmp_code; // 代码
-	unsigned short icmp_checksum; // 校验和
+	uint8_t icmp_type; // 消息类型
+	uint8_t icmp_code; // 代码
+	uint16_t icmp_checksum; // 校验和
 	// 下面是回显头
-	unsigned short icmp_id; // 用来惟一标识此请求的ID号
-	unsigned short icmp_sequence; // 序列号
+	uint16_t icmp_id; // 用来惟一标识此请求的ID号
+	uint16_t icmp_sequence; // 序列号
 	unsigned long icmp_timestamp; // 时间戳
-} ICMP_HDR;
+}__attribute__((packed)) ICMP_HDR;
 typedef struct IPHeader
 {// 20字节的IP头
 	uint8_t iphVerLen; // 版本号和头长度（各占4位）
@@ -26,7 +27,7 @@ typedef struct IPHeader
 	uint16_t ipChecksum; // 校验和
 	uint32_t ipSource; // 源IP地址
 	uint32_t ipDestination; // 目标IP地址
-} IPHeader;
+}__attribute__((packed)) IPHeader;
 
 uint32_t GetIpByName(const char *name)
 {
@@ -64,9 +65,11 @@ uint16_t checksum(uint16_t *buff, int size)
 	return (uint16_t)(~cksum);
 }
 
+char buff[sizeof(ICMP_HDR) + 32];
+char recvBuf[1024];
+
 int ping(in_addr_t ip, uint16_t nSeq)
 {
-
 	uint16_t pID = (uint16_t)time(0);
 	// 创建原始套节字
 	SOCKET sRaw = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -84,18 +87,20 @@ int ping(in_addr_t ip, uint16_t nSeq)
 		}
 		return -1;
 	}
+
 	// 设置接收超时
 	if (SetTimeout(sRaw, 1000, TRUE))
 	{
 		printf(1, "Cannot set timeout!\n");
 	}
+
 	// 设置目的地址
 	struct sockaddr_in dest;
 	dest.sin_family = AF_INET;
 	dest.sin_port = htons(0);
 	dest.sin_addr.s_addr = ip;
 	// 创建ICMP封包
-	char buff[sizeof(ICMP_HDR) + 32];
+	memset(buff, 0, sizeof(buff));
 	ICMP_HDR *pIcmp = (ICMP_HDR *)buff;
 	// 填写ICMP封包数据
 	pIcmp->icmp_type = 8; // 请求一个ICMP回显
@@ -106,20 +111,21 @@ int ping(in_addr_t ip, uint16_t nSeq)
 	// 填充数据部分，可以为任意
 	memset(&buff[sizeof(ICMP_HDR)], 'E', 32);
 	// 开始发送和接收ICMP封包
-
-	char recvBuf[1024];
 	struct sockaddr_in from;
 	socklen_t nLen = sizeof(from);
 
 	static int nCount = 0;
 	long nRet;
 
+	pIcmp->icmp_id = hton16(1);
 	pIcmp->icmp_checksum = 0;
 	pIcmp->icmp_timestamp = clock();
-	pIcmp->icmp_sequence = nSeq++;
-	pIcmp->icmp_checksum = checksum((uint16_t *)buff, sizeof(ICMP_HDR) + 32);
-	nRet = (long)sendto(sRaw, buff, sizeof(ICMP_HDR) + 32,
+	pIcmp->icmp_sequence = hton16(nSeq++);
+	pIcmp->icmp_checksum = checksum((uint16_t *)buff, sizeof(ICMP_HDR) + 32 - 4);
+	nRet = (long)sendto(sRaw, buff, sizeof(ICMP_HDR) + 32 - 4,
 						0, (struct sockaddr *)&dest, sizeof(dest));
+
+	printf(1, "fuck1!\n");
 	if (nRet == -1)
 	{
 		printf(1, " sendto() failed: %d \n", errno);
@@ -131,6 +137,8 @@ int ping(in_addr_t ip, uint16_t nSeq)
 		printf(1, " recvfrom() failed: %d\n", errno);
 		return -1;
 	}
+	printf(1, "fuck2!\n");
+
 	// 下面开始解析接收到的ICMP封包
 	clock_t nTick = clock();
 	if (nRet < sizeof(IPHeader) + sizeof(ICMP_HDR))
@@ -167,7 +175,11 @@ int main(int args, const char *argv[])
 	if ((int)ip == -1)
 	{
 		ip = GetIpByName(szDestIp);
-	} // nds
+	}
+	else
+	{
+		ip = ntohl(ip);
+	}
 	if ((int)ip == -1)
 	{
 		printf(1, "invalid ip address:%s\n", szDestIp);
@@ -176,7 +188,7 @@ int main(int args, const char *argv[])
 	printf(1, "ping %s\n", szDestIp);
 	for (int i = 0; i < 4; ++i)
 	{
-		if (ping(ip, i))
+		if (ping(ip, i + 1))
 		{
 			return -1;
 		}
