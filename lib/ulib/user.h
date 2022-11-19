@@ -46,7 +46,7 @@ int fgproc();
 int alarm(int);
 
 int __error(void);
-#define errno (* __error())
+#define errno (* (int*)__error())
 
 int ioctl(int, int, ...);
 
@@ -77,6 +77,6 @@ void *malloc(uint);
 void free(void *);
 int atoi(const char *);
 long strtol(const char *s, char **endptr, int base);
-int strnlen(const char *,int);
+int strnlen(const char *, int);
 
 int snprintf(char *buf, int n, const char *fmt, ...);
