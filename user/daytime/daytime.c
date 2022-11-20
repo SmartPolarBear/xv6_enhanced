@@ -15,7 +15,7 @@ char buf[512];
 
 int main(int argc, char **argv)
 {
-	struct hostent *hp;
+//	struct hostent *hp;
 	int sockfd, r;
 	struct sockaddr_in addr = {
 		.sin_family = PF_INET, .sin_port =  hton16(SERVER_PORT),

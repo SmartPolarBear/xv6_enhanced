@@ -104,6 +104,12 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 		goto free_sock;
 	}
 
+	if (!socket->opts->alloc)
+	{
+		*err = -ESOCKTNOSUPPORT;
+		goto free_sock;
+	}
+
 	int ret = socket->opts->alloc(socket);
 	if (ret < 0)
 	{
@@ -136,6 +142,7 @@ void socketclose(socket_t *skt)
 
 	if (skt->pcb)
 	{
+		KDEBUG_ASSERT(skt->opts->close);
 		KDEBUG_ASSERT(!skt->opts->close(skt));
 		skt->pcb = NULL;
 	}
@@ -165,6 +172,11 @@ int socketconnect(socket_t *skt, struct sockaddr *addr, int addr_len)
 		return -EOPNOTSUPP;
 	}
 
+	if (!skt->opts->connect)
+	{
+		return -ESOCKTNOSUPPORT;
+	}
+
 	int ret = skt->opts->connect(skt, addr, addr_len);
 
 	if (!ret)
@@ -191,6 +203,10 @@ int socketbind(socket_t *skt, struct sockaddr *addr, int addr_len)
 	{
 		return -EOPNOTSUPP;
 	}
+	if (!skt->opts->bind)
+	{
+		return -ESOCKTNOSUPPORT;
+	}
 
 	return skt->opts->bind(skt, addr, addr_len);
 }
@@ -202,6 +218,10 @@ int socketlisten(socket_t *skt, int backlog)
 		return -EOPNOTSUPP;
 	}
 
+	if (!skt->opts->listen)
+	{
+		return -ESOCKTNOSUPPORT;
+	}
 	return skt->opts->listen(skt, backlog);
 }
 
@@ -211,6 +231,11 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	{
 		*err = -EOPNOTSUPP;
 		return NULL;
+	}
+
+	if (!skt->opts->accept)
+	{
+		*err = -ESOCKTNOSUPPORT;
 	}
 
 	int avail = 0;
@@ -288,6 +313,11 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 		return -EOPNOTSUPP;
 	}
 
+	if (!skt->opts->recv)
+	{
+		return -ESOCKTNOSUPPORT;
+	}
+
 	if (len <= 0)
 	{
 		return -EINVAL;
@@ -355,6 +385,11 @@ int socketsend(socket_t *skt, char *buf, int len, int flags)
 		return -EOPNOTSUPP;
 	}
 
+	if (!skt->opts->send)
+	{
+		return -ESOCKTNOSUPPORT;
+	}
+
 	return skt->opts->send(skt, buf, len, flags);
 }
 
@@ -381,6 +416,11 @@ int socketsendto(socket_t *skt, char *buf, int len, int flags, struct sockaddr *
 		return -EINVAL;
 	}
 
+	if (!skt->opts->sendto)
+	{
+		return -ESOCKTNOSUPPORT;
+	}
+
 	return skt->opts->sendto(skt, buf, len, flags, addr, addrlen);
 }
 
@@ -395,6 +435,11 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 
 		// as stated in the document, it will have the same effect as recv()
 		return socketrecv(skt, buf, len, flags);
+	}
+
+	if (!skt->opts->recvfrom)
+	{
+		return -ESOCKTNOSUPPORT;
 	}
 
 	skt->recvfrom_params.recv_len = len;
@@ -454,32 +499,29 @@ int socketioctl(socket_t *skt, int req, void *arg)
 
 int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *optlen)
 {
+	KDEBUG_ASSERT(skt->opts->getsockopt);
 	switch (level)
 	{
-	case IPPROTO_TCP:
+	case SOL_SOCKET:
 		switch (optname)
 		{
-		case SO_TYPE:
-			*(int *)optval = SOCK_STREAM;
-			*optlen = sizeof(int);
+		case SO_RCVTIMEO:
+			*(int *)optval = skt->recv_timeout;
+			return 0;
+		case SO_SNDTIMEO:
+			*(int *)optval = skt->send_timeout;
 			return 0;
 		}
 		break;
-	case IPPROTO_UDP:
-		switch (optname)
-		{
-		case SO_TYPE:
-			*(int *)optval = SOCK_STREAM;
-			*optlen = sizeof(int);
-			return 0;
-		}
-		break;
+	default:
+		return skt->opts->getsockopt(skt, level, optname, optval, optlen);
 	}
 	return -EINVAL;
 }
 
 int socksetsockopt(socket_t *skt, int level, int optname, void *optval, int optlen)
 {
+	KDEBUG_ASSERT(skt->opts->setsockopt);
 	switch (level)
 	{
 	case SOL_SOCKET:
@@ -492,39 +534,8 @@ int socksetsockopt(socket_t *skt, int level, int optname, void *optval, int optl
 			skt->send_timeout = *(int *)optval;
 		}
 		break;
-	case IPPROTO_IP:
-		switch (optname)
-		{
-		case IP_TTL:
-			if (optlen != sizeof(int))
-			{
-				return -EINVAL;
-			}
-			skt->ttl = *(int *)optval;
-			return 0;
-		}
-		break;
-	case IPPROTO_TCP:
-		switch (optname)
-		{
-		case SO_TYPE:
-			return -EINVAL;
-		}
-		break;
-	case IPPROTO_UDP:
-		switch (optname)
-		{
-		case SO_TYPE:
-			return -EINVAL;
-		}
-		break;
-	case IPPROTO_RAW:
-		switch (optname)
-		{
-		case SO_TYPE:
-			return -EINVAL;
-		}
-		break;
+	default:
+		return skt->opts->setsockopt(skt, level, optname, optval, optlen);
 	}
 	return -EINVAL;
 }

@@ -231,6 +231,55 @@ int rawclose(struct socket *socket)
 	return 0;
 }
 
+int rawgetsockopt(struct socket *s, int level, int optname, void *optval, int *optlen)
+{
+	switch (level)
+	{
+	case IPPROTO_IP:
+		switch (optname)
+		{
+		case IP_TTL:
+			*(int *)optval = ((struct raw_pcb *)s->pcb)->ttl;
+			*optlen = sizeof(int);
+			return 0;
+		}
+		return -ENOPROTOOPT;
+
+	case IPPROTO_RAW:
+		switch (optname)
+		{
+		case SO_TYPE:
+			*(int *)optval = s->type;
+			*optlen = sizeof(int);
+			return 0;
+		}
+	}
+	return -ENOPROTOOPT;
+}
+
+int rawsetsockopt(struct socket *s, int level, int optname, void *optval, int optlen)
+{
+	switch (level)
+	{
+	case IPPROTO_IP:
+		switch (optname)
+		{
+		case IP_TTL:
+			((struct raw_pcb *)s->pcb)->ttl = *(int *)optval;
+			return 0;
+		}
+		return -ENOPROTOOPT;
+	case IPPROTO_RAW:
+		switch (optname)
+		{
+		case SO_TYPE:
+			s->type = *(int *)optval;
+			return 0;
+		}
+	}
+	return -ENOPROTOOPT;
+}
+
 sockopts_t raw_opts = {
 	.meta={
 		.type=SOCK_RAW,
@@ -245,6 +294,8 @@ sockopts_t raw_opts = {
 	.recv=rawrecv,
 	.sendto=rawsendto,
 	.recvfrom=rawrecvfrom,
-	.close=rawclose
+	.close=rawclose,
+	.getsockopt=rawgetsockopt,
+	.setsockopt=rawsetsockopt,
 };
 

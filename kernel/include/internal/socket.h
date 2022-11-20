@@ -21,6 +21,9 @@ typedef struct sockopts
 	int (*sendto)(struct socket *s, void *buf, int len, int flags, struct sockaddr *addr, int addrlen);
 	int (*recvfrom)(struct socket *s, void *buf, int len, int flags, struct sockaddr *addr, int *addrlen);
 	int (*close)(struct socket *s);
+
+	int (*getsockopt)(struct socket *s, int level, int optname, void *optval, int *optlen);
+	int (*setsockopt)(struct socket *s, int level, int optname, void *optval, int optlen);
 } sockopts_t;
 
 static inline void addrin_byteswap(struct sockaddr_in *addr)
@@ -55,7 +58,6 @@ typedef struct socket
 
 	sockopts_t *opts;
 
-	int ttl;
 	int recv_timeout;
 	int send_timeout;
 

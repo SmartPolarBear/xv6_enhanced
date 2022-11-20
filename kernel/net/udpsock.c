@@ -206,6 +206,58 @@ int udpclose(struct socket *s)
 	return 0;
 }
 
+int udpgetsockopt(struct socket *s, int level, int optname, void *optval, int *optlen)
+{
+	switch (level)
+	{
+	case IPPROTO_IP:
+		switch (optname)
+		{
+		case IP_TTL:
+			*(int *)optval = ((struct udp_pcb *)s->pcb)->ttl;
+			*optlen = sizeof(int);
+			return 0;
+		}
+		return -ENOPROTOOPT;
+
+	case IPPROTO_UDP:
+		switch (optname)
+		{
+		case SO_TYPE:
+			*(int *)optval = SOCK_DGRAM;
+			*optlen = sizeof(int);
+			return 0;
+		}
+	}
+	return -ENOPROTOOPT;
+}
+
+int udpsetsockopt(struct socket *s, int level, int optname, void *optval, int optlen)
+{
+	switch (level)
+	{
+	case IPPROTO_IP:
+		switch (optname)
+		{
+		case IP_TTL:
+			if (optlen != sizeof(int))
+			{
+				return -EINVAL;
+			}
+			((struct udp_pcb *)s->pcb)->ttl = *(int *)optval;
+			return 0;
+		}
+		break;
+	case IPPROTO_UDP:
+		switch (optname)
+		{
+		case SO_TYPE:
+			return -EINVAL;
+		}
+	}
+	return -ENOPROTOOPT;
+}
+
 sockopts_t udp_opts = {
 	.meta = {
 		.type = SOCK_DGRAM,
@@ -221,4 +273,6 @@ sockopts_t udp_opts = {
 	.sendto = udpsendto,
 	.recvfrom = udprecvfrom,
 	.close = udpclose,
+	.getsockopt= udpgetsockopt,
+	.setsockopt = udpsetsockopt,
 };
