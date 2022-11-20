@@ -84,6 +84,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 		{
 			printf(1, "Cannot create socket! Error %d", eno);
 		}
+		close(sRaw);
 		return -1;
 	}
 	// 设置接收超时
@@ -125,6 +126,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	if (nRet == -1)
 	{
 		printf(1, " sendto() failed: %d \n", errno);
+		close(sRaw);
 		return -1;
 	}
 	clock_t beforeClock = clock();
@@ -132,6 +134,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	if (nRet == -1)
 	{
 		printf(1, "%d\t*\n", ttl);
+		close(sRaw);
 		return -1;
 	}
 	// 下面开始解析接收到的ICMP封包
@@ -146,9 +149,11 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	printf(1, "%d\t%d\t%s\n", ttl, (int)nTick - (int)beforeClock, inet_ntoa(*(struct in_addr *)&from.sin_addr));
 	if (ip == inet_addr(inet_ntoa(*(struct in_addr *)&from.sin_addr)))
 	{
+		close(sRaw);
 		return 0;
 	}
 
+	close(sRaw);
 	return -1;
 }
 
@@ -160,7 +165,11 @@ int main(int args, const char *argv[])
 	if ((int)ip == -1)
 	{
 		ip = GetIpByName(szDestIp);
-	} // nds
+	}
+	else
+	{
+		ip = ntohl(ip);
+	}
 	if ((int)ip == -1)
 	{
 		printf(1, "invalid ip address:%s\n", szDestIp);
