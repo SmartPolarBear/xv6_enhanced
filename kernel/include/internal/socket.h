@@ -55,5 +55,9 @@ typedef struct socket
 
 	sockopts_t *opts;
 
+	int ttl;
+	int recv_timeout;
+	int send_timeout;
+
 	spinlock_t lock;
 } socket_t;

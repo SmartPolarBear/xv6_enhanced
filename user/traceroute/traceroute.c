@@ -63,6 +63,9 @@ uint16_t checksum(uint16_t *buff, int size)
 	return (uint16_t)(~cksum);
 }
 
+char buff[sizeof(ICMP_HDR) + 32];
+char recvBuf[1024];
+
 int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 {
 
@@ -94,7 +97,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	dest.sin_port = htons(0);
 	dest.sin_addr.s_addr = ip;
 	// 创建ICMP封包
-	char buff[sizeof(ICMP_HDR) + 32];
+	memset(buff, 0, sizeof(buff));
 	ICMP_HDR *pIcmp = (ICMP_HDR *)buff;
 	// 填写ICMP封包数据
 	pIcmp->icmp_type = 8; // 请求一个ICMP回显
@@ -106,7 +109,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	memset(&buff[sizeof(ICMP_HDR)], 'E', 32);
 	// 开始发送和接收ICMP封包
 
-	char recvBuf[1024];
+	memset(recvBuf, 0, sizeof(recvBuf));
 	struct sockaddr_in from;
 	socklen_t nLen = sizeof(from);
 
@@ -164,7 +167,7 @@ int main(int args, const char *argv[])
 		return -1;
 	}
 	printf(1, "trace %s\n", szDestIp);
-	for (int i = 1; i < 100; ++i)
+	for (int i = 1; i < 64; ++i)
 	{
 		int ret = ping(ip, i, i);
 		if (!ret)

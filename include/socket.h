@@ -32,10 +32,10 @@ typedef ip4_addr_t ip_addr_t;
 #define SOCK_RAW    3
 
 #define IPPROTO_IP  0
-#define IPPROTO_TCP 1
-#define IPPROTO_UDP 2
-#define IPPROTO_RAW 3
-#define IPPROTO_ICMP 4
+#define IPPROTO_ICMP 1
+#define IPPROTO_TCP 6
+#define IPPROTO_UDP 17
+#define IPPROTO_RAW 255
 
 typedef struct sockaddr
 {

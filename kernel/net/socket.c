@@ -121,7 +121,6 @@ struct file *socketalloc(int domain, int type, int protocol, int *err)
 
 free_sock:
 	kmem_cache_free(socket_cache, socket);
-	netend_op();
 	return NULL;
 }
 
@@ -455,7 +454,7 @@ int socketioctl(socket_t *skt, int req, void *arg)
 
 int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *optlen)
 {
-	switch (skt->type)
+	switch (level)
 	{
 	case IPPROTO_TCP:
 		switch (optname)
@@ -481,8 +480,30 @@ int socketgetsockopt(socket_t *skt, int level, int optname, void *optval, int *o
 
 int socksetsockopt(socket_t *skt, int level, int optname, void *optval, int optlen)
 {
-	switch (skt->type)
+	switch (level)
 	{
+	case SOL_SOCKET:
+		switch (optname)
+		{
+		case SO_RCVTIMEO:
+			skt->recv_timeout = *(int *)optval;
+			return 0;
+		case SO_SNDTIMEO:
+			skt->send_timeout = *(int *)optval;
+		}
+		break;
+	case IPPROTO_IP:
+		switch (optname)
+		{
+		case IP_TTL:
+			if (optlen != sizeof(int))
+			{
+				return -EINVAL;
+			}
+			skt->ttl = *(int *)optval;
+			return 0;
+		}
+		break;
 	case IPPROTO_TCP:
 		switch (optname)
 		{
@@ -491,6 +512,13 @@ int socksetsockopt(socket_t *skt, int level, int optname, void *optval, int optl
 		}
 		break;
 	case IPPROTO_UDP:
+		switch (optname)
+		{
+		case SO_TYPE:
+			return -EINVAL;
+		}
+		break;
+	case IPPROTO_RAW:
 		switch (optname)
 		{
 		case SO_TYPE:
