@@ -47,7 +47,7 @@ int fgproc();
 int alarm(int);
 
 int __error(void);
-#define errno (* (int*)__error())
+#define errno (__error())
 
 int ioctl(int, int, ...);
 

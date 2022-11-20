@@ -43,7 +43,7 @@ uint32_t GetIpByName(const char *name)
 int SetTimeout(SOCKET s, int nTime, int bRecv)
 {
 	int ret = setsockopt(s, SOL_SOCKET, bRecv ? SO_RCVTIMEO : SO_SNDTIMEO, (char *)&nTime, sizeof(nTime));
-	return ret != -1;
+	return ret == 0;
 }
 
 uint16_t checksum(uint16_t *buff, int size)
@@ -85,11 +85,12 @@ int ping(in_addr_t ip, uint16_t nSeq)
 		{
 			printf(1, "Cannot create socket! Error %d", eno);
 		}
+		close(sRaw);
 		return -1;
 	}
 
 	// 设置接收超时
-	if (SetTimeout(sRaw, 1000, TRUE))
+	if (!SetTimeout(sRaw, 1000, TRUE))
 	{
 		printf(1, "Cannot set timeout!\n");
 	}
@@ -127,12 +128,14 @@ int ping(in_addr_t ip, uint16_t nSeq)
 	if (nRet == -1)
 	{
 		printf(1, " sendto() failed: %d \n", errno);
+		close(sRaw);
 		return -1;
 	}
 	nRet = (long)recvfrom(sRaw, recvBuf, 1024, 0, (struct sockaddr *)&from, &nLen);
 	if (nRet == -1)
 	{
 		printf(1, " recvfrom() failed: %d\n", errno);
+		close(sRaw);
 		return -1;
 	}
 
@@ -148,11 +151,13 @@ int ping(in_addr_t ip, uint16_t nSeq)
 	if (pRecvIcmp->icmp_type != 0)// 回显
 	{
 		printf(1, " nonecho type %d recvd \n", pRecvIcmp->icmp_type);
+		close(sRaw);
 		return -1;
 	}
 	if (pRecvIcmp->icmp_id != pID)
 	{
 		printf(1, " someone else's packet! \n");
+		close(sRaw);
 		return -1;
 	}
 	printf(1, " %d bytes from %s:", (int)nRet, inet_ntoa(*(struct in_addr *)&from.sin_addr));
@@ -161,6 +166,7 @@ int ping(in_addr_t ip, uint16_t nSeq)
 	printf(1, " time: %d ms", (int)nTick - (int)pRecvIcmp->icmp_timestamp);
 	printf(1, " \n");
 
+	close(sRaw);
 	return 0;
 }
 
