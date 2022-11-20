@@ -102,7 +102,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	// 填写ICMP封包数据
 	pIcmp->icmp_type = 8; // 请求一个ICMP回显
 	pIcmp->icmp_code = 0;
-	pIcmp->icmp_id = (uint16_t)pID;
+	pIcmp->icmp_id = htons((uint16_t)pID);
 	pIcmp->icmp_checksum = 0;
 	pIcmp->icmp_sequence = 0;
 	// 填充数据部分，可以为任意
@@ -118,7 +118,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 
 	pIcmp->icmp_checksum = 0;
 	pIcmp->icmp_timestamp = clock();
-	pIcmp->icmp_sequence = nSeq++;
+	pIcmp->icmp_sequence = htons(nSeq++);
 	pIcmp->icmp_checksum = checksum((uint16_t *)buff, sizeof(ICMP_HDR) + 32);
 	nRet = (long)sendto(sRaw, buff, sizeof(ICMP_HDR) + 32,
 						0, (struct sockaddr *)&dest, sizeof(dest));
