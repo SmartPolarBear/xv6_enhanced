@@ -68,7 +68,6 @@ char recvBuf[1024];
 
 int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 {
-
 	uint16_t pID = (uint16_t)time(0);
 	// 创建原始套节字
 	SOCKET sRaw = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -147,7 +146,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	ICMP_HDR *pRecvIcmp = (ICMP_HDR *)(recvBuf + 20); // (ICMP_HDR*)(recvBuf + sizeof(IPHeader));
 	IPHeader *ipHeader = (IPHeader *)recvBuf;
 	printf(1, "%d\t%d\t%s\n", ttl, (int)nTick - (int)beforeClock, inet_ntoa(*(struct in_addr *)&from.sin_addr));
-	if (ip == inet_addr(inet_ntoa(*(struct in_addr *)&from.sin_addr)))
+	if (ntohl(ip) == inet_addr(inet_ntoa(*(struct in_addr *)&from.sin_addr)))
 	{
 		close(sRaw);
 		return 0;
