@@ -1,44 +1,52 @@
 // Created by Zhao Qi‘ao on 2022/11/15.
 //
-#include <user.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <string.h>
+#include <arpa/inet.h>
 #include <netdb.h>
-#include <socket.h>
-#include <inet.h>
 
-int main(int argc, char *argv[])
-{
-	if (argc < 2)
-	{
-		printf(2, "Usage nslookup [-option] [name | -] [server]\n");
-		return -1;
-	}
-	char *hostname = argv[1];
-
-	struct hostent *hptr;
-	if (!(hptr = (struct hostent *)gethostbyname(hostname)))
-	{
-		printf(2, "Cannot query name %s\n", hostname);
-		return -1;
-	}
-	printf(1, "HOST NAME: %s\n", hptr->h_name);
-	char **p_alias = hptr->h_aliases;
-	char **p_addr = hptr->h_addr_list;
-	while (*p_alias)
-	{
-		printf(1, "ALIAS: %s\n", *p_alias);
-		p_alias++;
-	}
-	while (*p_addr)
-	{
-		if (hptr->h_addrtype == AF_INET)
-		{
-			printf(1, "ADDR: %s\n", inet_ntoa(*(struct in_addr *)*p_addr));
-			p_addr++;
-		}
-		else
-		{
-			printf(2, "Unknown address type\n");
-		}
-	}
-	return 0;
+int main(int argc, char *argv[]){
+    /*
+     * Usage:nslookup [-option] [name | -] [server]
+     */
+    if (argc < 2){
+        perror("Usage Error\n");
+        return -1;
+    }
+    struct sockaddr_in addr;
+    struct hostent * hptr;
+    if(inet_pton(AF_INET, argv[1], &addr.sin_addr) != 1){
+        // Is Not IP Addr
+        char *hostname = argv[1];
+        if (!(hptr = gethostbyname(hostname))) {
+            perror("Get HostName Error\n");
+            return -1;
+        }
+        printf("NAME :    %s\n", hptr->h_name);
+        char **p_alias = hptr->h_aliases;
+        char **p_addr = hptr->h_addr_list;
+        char str[INET_ADDRSTRLEN];
+        while (*p_alias) {
+            printf("ALIAS:    %s\n", *p_alias);
+            p_alias++;
+        }
+        while (*p_addr) {
+            if (hptr->h_addrtype == AF_INET) {
+                printf("ADDR :    %s\n", inet_ntop(hptr->h_addrtype, *p_addr, str, sizeof(str)));
+                p_addr++;
+            } else {
+                perror("Unknown Address Type\n");
+            }
+        }
+    }
+    else if (inet_pton(AF_INET, argv[1], &addr.sin_addr) == 1){
+        if (!(hptr = gethostbyaddr((const char*)&addr.sin_addr, strlen(&addr.sin_addr), AF_INET))){
+            perror("Get HostName Error\n");
+            printf("Server cannot find %s",argv[1]);
+            return -1;
+        }
+        printf("IP Address = %s          NAME = %s", argv[1], hptr->h_name);
+    }
+    return 0;
 }
