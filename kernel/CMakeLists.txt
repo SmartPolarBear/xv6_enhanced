@@ -88,7 +88,6 @@ add_executable(kernel
         debug.c
         date.c
         exec.c
-        e1000_nic.c
         file.c
         fs.c
         ide.c
@@ -100,27 +99,25 @@ add_executable(kernel
         main.c
         mp.c
         memory.c
-        net.c
         pci.c
         picirq.c
         pipe.c
         proc.c
+        pmm.c
         sleeplock.c
         spinlock.c
         string.c
         slab.c
         syscall.c
-        socket.c
         sysfile.c
         sysproc.c
-        syssocket.c
         trap.c
         uart.c
         vfs.c
-        virtio_nic.c
-        vm.c)
+        vmm.c)
 
 add_subdirectory(lib)
+add_subdirectory(net)
 
 target_compile_definitions(kernel
         PRIVATE -D__KERNEL__)

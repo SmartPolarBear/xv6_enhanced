@@ -27,8 +27,8 @@ target_link_options(_nslookup BEFORE
         PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld)
 
 
-add_custom_command(TARGET _alarmhello POST_BUILD
-        COMMAND objdump -S $<TARGET_FILE:_nslookup> > ${CMAKE_CURRENT_BINARY_DIR}/nslookup.asm
-        COMMAND objdump -t $<TARGET_FILE:_nslookup> > ${CMAKE_CURRENT_BINARY_DIR}/nslookup.sym
+add_custom_command(TARGET _nslookup POST_BUILD
+        COMMAND objdump -S $<TARGET_FILE:_nslookup> > ${CMAKE_CURRENT_BINARY_DIR}/mkdir.asm
+        COMMAND objdump -t $<TARGET_FILE:_nslookup> > ${CMAKE_CURRENT_BINARY_DIR}/mkdir.sym
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )

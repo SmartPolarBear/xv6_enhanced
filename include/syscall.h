@@ -29,6 +29,7 @@
 #define SYS_alarm 26
 
 #define SYS_ioctl    27
+
 #define SYS_socket   28
 #define SYS_connect  29
 #define SYS_bind     30
@@ -39,3 +40,6 @@
 #define SYS_recvfrom 35
 #define SYS_sendto   36
 #define SYS_error    37
+#define SYS_getsockopt 38
+#define SYS_gethostbyname 39
+#define SYS_gethostbyaddr 40

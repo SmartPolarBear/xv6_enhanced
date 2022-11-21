@@ -55,8 +55,8 @@ static inline slab_t *cache_grow(kmem_cache_t *cache)
 	slab->in_use = 0;
 	slab->bufctl = (kmem_bufctl *)(page + sizeof(slab_t));
 
-	char *obj_start = page + sizeof(slab_t) + cache->obj_count * sizeof(kmem_bufctl) + 16;
-	obj_start = (char *)PGROUNDUP((uint)obj_start);
+	char *obj_start = page + sizeof(slab_t) + cache->obj_count * sizeof(kmem_bufctl);
+	obj_start = (char *)ROUNDUP((uint)obj_start, 16); // if not, device drivers may not work
 
 	slab->objects = obj_start;
 	for (int i = 0; i < cache->obj_count; i++)
@@ -239,14 +239,14 @@ void kmem_cache_free(kmem_cache_t *cache, void *obj)
 {
 	KDEBUG_ASSERT(obj);
 
+	acquire(&cache->lock);
+
 	slab_t *slab = slab_find(cache, obj);
 	KDEBUG_ASSERT(slab);
 
 	acquire(&slab->lock);
 
 	size_t index = (obj - slab->objects) / cache->obj_size;
-
-	acquire(&cache->lock);
 
 	list_del(&slab->link);
 
@@ -266,6 +266,9 @@ void kmem_cache_free(kmem_cache_t *cache, void *obj)
 	{
 		list_add(&slab->link, &cache->full);
 	}
+
+	release(&slab->lock);
+	release(&cache->lock);
 }
 
 size_t kmem_cache_shrink(kmem_cache_t *cache)

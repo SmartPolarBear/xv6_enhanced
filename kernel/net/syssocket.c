@@ -198,47 +198,95 @@ sys_send(void)
 int
 sys_recvfrom(void)
 {
-//	struct file *f;
-//	int n;
-//	char *p;
-//	int *addrlen;
-//	struct sockaddr *addr = NULL;
-//
-//	if (argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0
-//		|| argptr(4, (void *)&addrlen, sizeof(*addrlen)) < 0)
-//	{
-//		return -1;
-//	}
-//	if (addrlen && argptr(3, (void *)&addr, *addrlen) < 0)
-//	{
-//		return -1;
-//	}
-//	if (f->type != FD_SOCKET)
-//	{
-//		return -1;
-//	}
-//	return socketrecvfrom(f->socket, p, n, addr, addrlen);
-	return -1;
+	struct file *f;
+	int n;
+	char *p;
+	int flags;
+	int *addrlen;
+	struct sockaddr *addr = NULL;
+
+	if (argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0 || argint(3, &flags) < 0
+		|| argptr(5, (void *)&addrlen, sizeof(*addrlen)) < 0)
+	{
+		return -1;
+	}
+
+	if (addrlen && argptr(4, (void *)&addr, *addrlen) < 0)
+	{
+		return -1;
+	}
+
+	if (f->type != FD_SOCKET)
+	{
+		return -1;
+	}
+
+	int err = socketrecvfrom(f->socket, p, n, flags, addr, addrlen);
+
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+	return err; // length
 }
 
 int
 sys_sendto(void)
 {
-//	struct file *f;
-//	int n;
-//	char *p;
-//	int addrlen;
-//	struct sockaddr *addr;
-//
-//	if (argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0 || argint(4, &addrlen) < 0
-//		|| argptr(3, (void *)&addr, addrlen) < 0)
-//	{
-//		return -1;
-//	}
-//	if (f->type != FD_SOCKET)
-//	{
-//		return -1;
-//	}
-//	return socketsendto(f->socket, p, n, addr, addrlen);
-	return -1;
+	struct file *f;
+	int n;
+	int flags;
+	char *p;
+	int addrlen;
+	struct sockaddr *addr;
+
+	if (argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0 || argint(3, &flags) < 0
+		|| argint(5, &addrlen) < 0
+		|| argptr(4, (void *)&addr, addrlen) < 0)
+	{
+		return -1;
+	}
+
+	if (f->type != FD_SOCKET)
+	{
+		return -1;
+	}
+	int err = socketsendto(f->socket, p, n, flags, addr, addrlen);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+
+	return err; // length
+}
+
+int sys_getsockopt(void)
+{
+	struct file *f;
+	int level, optname;
+	void *optval;
+	int *optlen;
+
+	if (argfd(0, 0, &f) < 0 || argint(1, &level) < 0 || argint(2, &optname) < 0
+		|| argptr(3, (void *)&optval, sizeof(*optval)) < 0
+		|| argptr(4, (void *)&optlen, sizeof(*optlen)) < 0)
+	{
+		return -1;
+	}
+
+	if (f->type != FD_SOCKET)
+	{
+		return -1;
+	}
+
+	int err = socketgetsockopt(f->socket, level, optname, optval, optlen);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+
+	return err;
 }

@@ -11,7 +11,9 @@ int errnos[NCPU];
 
 void seterror(int err)
 {
+	pushcli();
 	errnos[mycpu()->apicid] = err;
+	popcli();
 }
 
 int
@@ -200,5 +202,8 @@ int sys_alarm(void)
 
 int sys_error()
 {
-	return errnos[mycpu()->apicid];
+	pushcli();
+	int err = errnos[mycpu()->apicid];
+	popcli();
+	return err;
 }
