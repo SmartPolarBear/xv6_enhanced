@@ -98,14 +98,26 @@ int sys_gethostbyname(void)
 	return (int)host;
 }
 
+char namebuf[INET_ADDRSTRLEN];
+
 int sys_gethostbyaddr(void)
 {
-	char *name = NULL;
-	if (argstr(0, &name) < 0)
+	struct in_addr *addrptr;
+	int len;
+	int type;
+	if (argptr(0, (void *)&addrptr, sizeof(struct in_addr)) < 0 || argint(1, &len) < 0 || argint(2, &type) < 0)
 	{
 		return -1;
 	}
-	struct netdb_answer *ans = netdb_query(name, QUERY_ARPA);
+
+	if (type != AF_INET || len != 4)
+	{
+		return -1;
+	}
+
+	memmove(namebuf, inet_ntoa(*addrptr), INET_ADDRSTRLEN);
+
+	struct netdb_answer *ans = netdb_query(namebuf, QUERY_ARPA);
 
 	if (!ans)
 	{
@@ -144,7 +156,7 @@ int sys_gethostbyaddr(void)
 	*addr_list = p;
 
 	uint32 addr = 0;
-	inet_aton(name, (struct in_addr *)&addr);
+	inet_aton(namebuf, (struct in_addr *)&addr);
 
 	*((uint32 *)p) = addr;
 

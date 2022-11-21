@@ -63,7 +63,7 @@ int sendto(int, char *, int, int, struct sockaddr *, int);
 int getsockopt(int, int, int, char *, int *);
 int setsockopt(int, int, int, char *, int);
 int gethostbyname(char *);
-int gethostbyaddr(char *);
+int gethostbyaddr(char *, int, int);
 
 // ulib.c
 int stat(const char *, struct stat *);
