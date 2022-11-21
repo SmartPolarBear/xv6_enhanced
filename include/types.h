@@ -29,12 +29,14 @@ typedef long long int64;
 typedef uint pde_t;
 typedef uint gfp_t;
 
-#ifdef __KERNEL__
+#ifndef __HOSTTOOL__
 typedef uint32 size_t;
 typedef int32 ssize_t;
 typedef uint32 uintptr_t;
 typedef int32 time_t;
 typedef uint pid_t;
+
+typedef uint32 clock_t;
 #endif
 
 
@@ -75,12 +77,12 @@ typedef struct list_head
 	struct list_head *prev, *next;
 } list_head_t;
 
-static inline uint16 byteswap16(uint16 v)
-{
-	return (v & 0x00ff) << 8 | (v & 0xff00) >> 8;
-}
+typedef __builtin_va_list va_list;
 
-static inline uint32 byteswap32(uint32 v)
-{
-	return (v & 0x000000ff) << 24 | (v & 0x0000ff00) << 8 | (v & 0x00ff0000) >> 8 | (v & 0xff000000) >> 24;
-}
+// variable length arguments
+#define va_start(ap, last) __builtin_va_start(ap, last)
+#define va_arg(ap, type) __builtin_va_arg(ap, type)
+#define va_end(ap) __builtin_va_end(ap)
+
+#define byteswap16(x) __builtin_bswap16(x)
+#define byteswap32(x) __builtin_bswap32(x)

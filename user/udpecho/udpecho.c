@@ -4,6 +4,7 @@
 #include "types.h"
 #include "user.h"
 #include "socket.h"
+#include "inet.h"
 
 int
 main(int argc, char *argv[])
@@ -22,7 +23,7 @@ main(int argc, char *argv[])
 	}
 	printf(1, "socket: success, soc=%d\n", soc);
 	self.sin_family = AF_INET;
-	self.sin_addr = INADDR_ANY;
+	self.sin_addr.s_addr = INADDR_ANY;
 	self.sin_port = hton16(7);
 	if (bind(soc, (struct sockaddr *)&self, sizeof(self)) == -1)
 	{

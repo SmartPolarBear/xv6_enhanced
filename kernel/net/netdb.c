@@ -22,6 +22,8 @@
 #include "lwip/udp.h"
 #include "lwip/dns.h"
 
+#include "internal/netdb.h"
+
 typedef struct
 {
 	uint16 xid;      /* Randomly chosen identifier */
@@ -254,7 +256,7 @@ void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 	uint16 response_flags = ntohs(response_header->flags);
 	if ((response_flags & 0xf) != 0 || (response_flags & 0x80) != 0x80)
 	{
-		return;
+		goto end;
 	}
 
 	uint8_t *start_of_name = (uint8_t * )(netdb_qbuf + sizeof(dns_header_t));
@@ -269,6 +271,7 @@ void netdb_dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p,
 
 	parse_result(response_header, (char *)field_length + 5);
 
+end:
 	pbuf_free(p);
 	wakeup(&dns_pcb);
 }
@@ -337,7 +340,6 @@ static inline struct netdb_answer *make_query(char *name, int type)
 	*prev = count;
 
 	p = netdb_qbuf;
-	udp_send(dns_pcb, pbuf_alloc(PBUF_TRANSPORT, p - netdb_qbuf, PBUF_RAM));
 	size_t packet_len = sizeof(dns_header_t) + sizeof(dns_question_t) - sizeof(char *) + hostlen + 2;
 
 	memmove(p, header, sizeof(dns_header_t));

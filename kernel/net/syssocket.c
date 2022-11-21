@@ -8,6 +8,7 @@
 #include "stat.h"
 #include "mmu.h"
 #include "proc.h"
+#include "errno.h"
 #include "fs.h"
 #include "spinlock.h"
 #include "sleeplock.h"
@@ -28,7 +29,7 @@ sys_socket(void)
 
 	int err = 0;
 	f = socketalloc(domain, type, protocol, &err);
-	if (err != 0 || (fd = fdalloc(f)) < 0)
+	if (err != 0 || !f || (fd = fdalloc(f)) < 0)
 	{
 		if (f)
 		{
@@ -53,6 +54,7 @@ sys_connect(void)
 	}
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 	int err = socketconnect(f->socket, addr, addrlen);
@@ -77,6 +79,7 @@ sys_bind(void)
 	}
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 	int err = socketbind(f->socket, addr, addrlen);
@@ -100,6 +103,7 @@ sys_listen(void)
 	}
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 	int err = socketlisten(f->socket, backlog);
@@ -128,6 +132,7 @@ sys_accept(void)
 	}
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 
@@ -158,6 +163,7 @@ sys_recv(void)
 
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 	int err = socketrecv(f->socket, p, n, flags);
@@ -184,8 +190,10 @@ sys_send(void)
 
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
+
 	int err = socketsend(f->socket, p, n, flags);
 	if (err < 0)
 	{
@@ -218,6 +226,7 @@ sys_recvfrom(void)
 
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 
@@ -250,6 +259,7 @@ sys_sendto(void)
 
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 	int err = socketsendto(f->socket, p, n, flags, addr, addrlen);
@@ -278,10 +288,41 @@ int sys_getsockopt(void)
 
 	if (f->type != FD_SOCKET)
 	{
+		seterror(-ENOTSOCK);
 		return -1;
 	}
 
 	int err = socketgetsockopt(f->socket, level, optname, optval, optlen);
+	if (err < 0)
+	{
+		seterror(err);
+		return -1;
+	}
+
+	return err;
+}
+
+int sys_setsockopt(void)
+{
+	struct file *f;
+	int level, optname;
+	void *optval;
+	int optlen;
+
+	if (argfd(0, 0, &f) < 0 || argint(1, &level) < 0 || argint(2, &optname) < 0
+		|| argptr(3, (void *)&optval, sizeof(*optval)) < 0
+		|| argint(4, &optlen) < 0)
+	{
+		return -1;
+	}
+
+	if (f->type != FD_SOCKET)
+	{
+		seterror(-ENOTSOCK);
+		return -1;
+	}
+
+	int err = socksetsockopt(f->socket, level, optname, optval, optlen);
 	if (err < 0)
 	{
 		seterror(err);

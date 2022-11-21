@@ -7,5 +7,8 @@ target_sources(kernel
         PRIVATE netdb.c
         PRIVATE netutils.c
         PRIVATE socket.c
+        PRIVATE rawsock.c
         PRIVATE syssocket.c
-        PRIVATE sysnetdb.c)
+        PRIVATE sysnetdb.c
+        PRIVATE tcpsock.c
+        PRIVATE udpsock.c)

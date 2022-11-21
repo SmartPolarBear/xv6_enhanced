@@ -95,6 +95,9 @@ argstr(int n, char **pp)
 	return fetchstr(addr, pp);
 }
 
+// sysdatetime.c
+int sys_time(void);
+
 extern int sys_exit(void);
 extern int sys_fork(void);
 extern int sys_getpid(void);
@@ -137,13 +140,15 @@ extern int sys_send(void);
 extern int sys_recvfrom(void);
 extern int sys_sendto(void);
 extern int sys_getsockopt(void);
+extern int sys_setsockopt(void);
 
 // sysnetdb.c
 extern int sys_gethostbyname(void);
 extern int sys_gethostbyaddr(void);
 
 static int (*syscalls[])(void) = {
-	[SYS_fork]    = sys_fork,
+	[SYS_time]    =sys_time,
+	[SYS_fork]    =sys_fork,
 	[SYS_exit]    =sys_exit,
 	[SYS_wait]    =sys_wait,
 	[SYS_waitpid] =sys_waitpid,
@@ -184,6 +189,7 @@ static int (*syscalls[])(void) = {
 	[SYS_getsockopt]=sys_getsockopt,
 	[SYS_gethostbyname]=sys_gethostbyname,
 	[SYS_gethostbyaddr]=sys_gethostbyaddr,
+	[SYS_setsockopt]=sys_setsockopt,
 };
 
 void

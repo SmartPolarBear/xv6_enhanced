@@ -1,5 +1,7 @@
 #pragma once
 
+#define __REV__ "0.0.1"
+
 struct buf;
 struct context;
 struct file;
@@ -30,6 +32,7 @@ void bwrite(struct buf *);
 // console.c
 void consoleinit(void);
 void cprintf(char *, ...);
+void cputc(int);
 void consoleintr(int(*)(void));
 
 // debug.c
@@ -170,6 +173,7 @@ void *memmove(void *, const void *, uint);
 void *memset(void *, int, uint);
 char *safestrcpy(char *, const char *, int);
 int strlen(const char *);
+int strnlen(const char *, int);
 int strncmp(const char *, const char *, uint);
 char *strncpy(char *, const char *, int);
 
@@ -279,6 +283,12 @@ int socketioctl(struct socket *, int, void *);
 int socketsendto(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int addrlen);
 int socketrecvfrom(struct socket *skt, char *buf, int len, int flags, struct sockaddr *addr, int *addrlen);
 int socketgetsockopt(struct socket *skt, int level, int optname, void *optval, int *optlen);
+int socksetsockopt(struct socket *skt, int level, int optname, void *optval, int optlen);
 
 // pmm.c
 void pmminit(void);
+
+// printfmt.c
+int snprintf(char *buf, int n, const char *fmt, ...);
+#define sprintf(buf, fmt, ...) snprintf(buf, 256, fmt, __VA_ARGS__);
+void printfmt(void (*putch)(int, void *), void *putdat, const char *fmt, ...);

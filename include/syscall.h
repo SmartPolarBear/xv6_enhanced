@@ -43,3 +43,6 @@
 #define SYS_getsockopt 38
 #define SYS_gethostbyname 39
 #define SYS_gethostbyaddr 40
+#define SYS_setsockopt 41
+
+#define SYS_time 42

@@ -32,4 +32,3 @@ add_custom_command(TARGET _ping POST_BUILD
         COMMAND objdump -t $<TARGET_FILE:_ping> > ${CMAKE_CURRENT_BINARY_DIR}/mkdir.sym
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
-
