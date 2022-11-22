@@ -2,6 +2,7 @@
 #include <netdb.h>
 #include <socket.h>
 #include <inet.h>
+#include <errno.h>
 
 typedef int SOCKET;
 
@@ -90,7 +91,7 @@ int ping(in_addr_t ip, uint16_t nSeq)
 	}
 
 	// 设置接收超时
-	if (!SetTimeout(sRaw, 1000, TRUE))
+	if (!SetTimeout(sRaw, 10000, TRUE))
 	{
 		printf(1, "Cannot set timeout!\n");
 	}
@@ -134,9 +135,18 @@ int ping(in_addr_t ip, uint16_t nSeq)
 	nRet = (long)recvfrom(sRaw, recvBuf, 1024, 0, (struct sockaddr *)&from, &nLen);
 	if (nRet == -1)
 	{
-		printf(1, " recvfrom() failed: %d\n", errno);
-		close(sRaw);
-		return -1;
+		if (errno == -EWOULDBLOCK)
+		{
+			printf(1, " Request timed out.\n");
+			close(sRaw);
+			return 0;
+		}
+		else
+		{
+			printf(1, " recvfrom() failed: %d\n", errno);
+			close(sRaw);
+			return -1;
+		}
 	}
 
 	// 下面开始解析接收到的ICMP封包

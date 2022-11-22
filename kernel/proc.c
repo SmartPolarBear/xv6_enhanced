@@ -17,9 +17,10 @@ struct
 static struct proc *initproc;
 
 int nextpid = 1;
-int tickspersecond = 0;
 extern void forkret(void);
 extern void trapret(void);
+
+uint tickspersecond = 0;
 
 static void wakeup1(void *chan);
 

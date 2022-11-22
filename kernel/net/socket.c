@@ -348,12 +348,13 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 			{
 				return -ECONNRESET;
 			}
+
 			acquire(&skt->lock);
 			skt->wakeup_retcode = 0;
 			if (sleepddl(&skt->recv_chan, &skt->lock, skt->recv_timeout) == 0)
 			{
 				release(&skt->lock);
-				return -ETIMEDOUT;
+				return -EWOULDBLOCK;
 			}
 			release(&skt->lock);
 
@@ -466,7 +467,7 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 		if (sleepddl(&skt->recv_chan, &skt->lock, skt->recv_timeout) == 0)
 		{
 			release(&skt->lock);
-			return -ETIMEDOUT;
+			return -EWOULDBLOCK;
 		}
 		release(&skt->lock);
 

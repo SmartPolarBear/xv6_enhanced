@@ -89,7 +89,7 @@ int ping(in_addr_t ip, uint16_t nSeq, uint8_t ttl)
 	// 设置接收超时
 	setsockopt(sRaw, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
 //	struct timeval timeout = {5, 0};
-	int timeout = 5;
+	int timeout = 5000;
 	setsockopt(sRaw, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 	// 设置目的地址
 	struct sockaddr_in dest;

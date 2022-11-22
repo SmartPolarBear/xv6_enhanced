@@ -24,6 +24,8 @@
 
 #include "internal/netdb.h"
 
+#define NETDB_TIMEOUT 10000
+
 typedef struct
 {
 	uint16 xid;      /* Randomly chosen identifier */
@@ -374,7 +376,10 @@ static inline struct netdb_answer *make_query(char *name, int type)
 
 	if (!query_ans)
 	{
-		sleep(&dns_pcb, &netdb_lock);
+		if (sleepddl(&dns_pcb, &netdb_lock, NETDB_TIMEOUT) == 0)
+		{
+			return NULL;
+		}
 	}
 	return query_ans;
 }
