@@ -1,5 +1,6 @@
 #include "types.h"
 #include "defs.h"
+#include "date.h"
 #include "param.h"
 #include "memlayout.h"
 #include "mmu.h"
@@ -16,6 +17,7 @@ struct
 static struct proc *initproc;
 
 int nextpid = 1;
+int tickspersecond = 0;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -423,6 +425,28 @@ scheduler(void)
 	struct cpu *c = mycpu();
 	c->proc = 0;
 
+	if (c->apicid == 0)
+	{
+		sti();
+		struct rtcdate date;
+		cmostime(&date);
+		int sec = date.second;
+		uint old_ticks = ticks;
+		int diff = 0;
+
+		while (1)
+		{
+			cmostime(&date);
+			if (date.second >= sec + 1)
+			{
+				diff = ticks - old_ticks;
+				break;
+			}
+		}
+
+		tickspersecond = diff;
+	}
+
 	for (;;)
 	{
 		// Enable interrupts on this processor.
@@ -432,6 +456,15 @@ scheduler(void)
 		acquire(&ptable.lock);
 		for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
 		{
+			if (p->state == SLEEPING && p->sleep.deadline > 0)
+			{
+				p->sleep.deadline--;
+				if (p->sleep.deadline == 0)
+				{
+					p->state = RUNNABLE;
+				}
+			}
+
 			if (p->state != RUNNABLE)
 			{
 				continue;
@@ -577,16 +610,19 @@ sleep(void *chan, struct spinlock *lk)
 	}
 }
 
-void sleepddl(void *chan, struct spinlock *lk, uint duration)
+uint sleepddl(void *chan, struct spinlock *lk, uint duration)
 {
 	if (duration == 0)
 	{
 		sleep(chan, lk);
-		return;
+		return 0xffffffff;
 	}
 
-	myproc()->sleep.deadline = ticks + duration;
+	myproc()->sleep.deadline = duration * tickspersecond;
 	sleep(chan, lk);
+	int ret = myproc()->sleep.deadline;
+	myproc()->sleep.deadline = 0;
+	return ret;
 }
 
 //PAGEBREAK!

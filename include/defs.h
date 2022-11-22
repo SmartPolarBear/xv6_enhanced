@@ -135,6 +135,7 @@ void scheduler(void) __attribute__((noreturn));
 void sched(void);
 void setproc(struct proc *);
 void sleep(void *, struct spinlock *);
+uint sleepddl(void *, struct spinlock *, uint duration);
 void userinit(void);
 int wait(int *);
 int waitpid(int, int *);
