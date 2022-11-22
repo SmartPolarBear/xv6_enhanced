@@ -258,7 +258,7 @@ struct file *socketaccept(socket_t *skt, struct sockaddr *addr, int *addrlen, in
 	}
 	else
 	{
-		while (!skt->backlog[avail])
+		while (avail >= SOCKET_NBACKLOG || !skt->backlog[avail])
 		{
 			acquire(&skt->lock);
 			for (avail = 0; avail < SOCKET_NBACKLOG; avail++)
