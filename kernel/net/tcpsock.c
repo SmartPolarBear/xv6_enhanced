@@ -70,6 +70,8 @@ err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, stru
 		return ERR_OK;
 	case LWIP_EVENT_SENT:
 		/* ignore */
+		socket->wakeup_retcode = 0;
+		wakeup(&socket->send_chan);
 		return ERR_OK;
 	case LWIP_EVENT_RECV:
 		/* closed or error */
@@ -225,6 +227,7 @@ int tcpsend(struct socket *s, void *buf, int len, int flags)
 		return -EAGAIN;
 	}
 
+	s->wakeup_retcode = -EWOULDBLOCK;
 	netbegin_op();
 
 	len = MIN(len, pcb->snd_buf);
@@ -245,6 +248,20 @@ int tcpsend(struct socket *s, void *buf, int len, int flags)
 	if (err == ERR_OK)
 	{
 		netend_op();
+
+		acquire(&s->lock);
+		if (s->wakeup_retcode == -EWOULDBLOCK)
+		{
+			// wait for the data to be sent
+			if (sleepddl(&s->send_chan, &s->lock, s->send_timeout) == 0)
+			{
+				s->wakeup_retcode = 0;
+				release(&s->lock);
+				return -EWOULDBLOCK;
+			}
+		}
+		s->wakeup_retcode = 0;
+		release(&s->lock);
 		return len; // succeeded
 	}
 
