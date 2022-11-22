@@ -350,7 +350,11 @@ int socketrecv(socket_t *skt, char *buf, int len, int flags)
 			}
 			acquire(&skt->lock);
 			skt->wakeup_retcode = 0;
-			sleep(&skt->recv_chan, &skt->lock);
+			if (sleepddl(&skt->recv_chan, &skt->lock, skt->recv_timeout) == 0)
+			{
+				release(&skt->lock);
+				return -ETIMEDOUT;
+			}
 			release(&skt->lock);
 
 			if (skt->wakeup_retcode != 0)
@@ -459,7 +463,11 @@ int socketrecvfrom(socket_t *skt, char *buf, int len, int flags, struct sockaddr
 
 		acquire(&skt->lock);
 		skt->wakeup_retcode = 0;
-		sleep(&skt->recv_chan, &skt->lock);
+		if (sleepddl(&skt->recv_chan, &skt->lock, skt->recv_timeout) == 0)
+		{
+			release(&skt->lock);
+			return -ETIMEDOUT;
+		}
 		release(&skt->lock);
 
 		if (skt->wakeup_retcode != 0)

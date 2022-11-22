@@ -54,6 +54,8 @@ typedef struct socket
 	char connect_chan;
 	char accept_chan;
 	char recv_chan;
+	char send_chan;
+
 	int wakeup_retcode;
 
 	sockopts_t *opts;
