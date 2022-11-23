@@ -25,7 +25,6 @@
 
 #include "internal/netdb.h"
 
-#define NETDB_TIMEOUT 10000
 
 typedef struct
 {
@@ -83,6 +82,9 @@ struct udp_pcb *dns_pcb = NULL;
 // google dns
 #define DNS_SERVER 0x08080808
 #define DNS_PORT 53
+
+#define DNS_TIMEOUT 50000
+
 
 static inline void buf_cleanup()
 {
@@ -354,7 +356,7 @@ static inline struct netdb_answer *make_query(char *name, int type)
 
 	if (!query_ans)
 	{
-		if (sleepddl(&dns_pcb, &netdb_lock, NETDB_TIMEOUT) == 0)
+		if (sleepddl(&dns_pcb, &netdb_lock, DNS_TIMEOUT) == 0)
 		{
 			return NULL;
 		}

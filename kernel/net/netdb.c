@@ -58,12 +58,14 @@ struct netdb_answer *netdb_query(char *name, int type)
 		}
 	}
 	release(&netdb_lock);
-	
+
 	return ans;
 }
 
 void netdb_free(struct netdb_answer *ans)
 {
+	acquire(&netdb_lock);
+
 	struct netdb_answer *p = ans;
 	while (p)
 	{
@@ -80,10 +82,14 @@ void netdb_free(struct netdb_answer *ans)
 
 		p = next;
 	}
+
+	release(&netdb_lock);
 }
 
 void netdb_dump_answer(struct netdb_answer *ans)
 {
+	acquire(&netdb_lock);
+	
 	struct netdb_answer *p = ans;
 	while (p)
 	{
@@ -97,4 +103,6 @@ void netdb_dump_answer(struct netdb_answer *ans)
 		}
 		p = p->next;
 	}
+
+	release(&netdb_lock);
 }
