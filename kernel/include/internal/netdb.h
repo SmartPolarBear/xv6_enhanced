@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 typedef struct netdb_answer
 {
 	int type;
@@ -36,3 +35,12 @@ typedef enum netdb_query_type
 	QUERY_DNS = 0,
 	QUERY_ARPA,
 } netdb_query_type_t;
+
+typedef struct netdb_proto
+{
+	void (*proto_init)();
+	int (*proto_query)(char *name, netdb_query_type_t type, netdb_answer_t **answer);
+	int (*proto_free_answer)(netdb_answer_t *answer);
+	int (*proto_dump_answer)(const netdb_answer_t *answer);
+	void (*proto_shutdown)();
+} netdb_proto_t;

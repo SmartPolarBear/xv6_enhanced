@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.16)
 add_subdirectory(drivers)
 
 target_sources(kernel
+        PRIVATE baredns.c
+        PRIVATE dnsoverhttps.c
         PRIVATE net.c
         PRIVATE netdb.c
         PRIVATE netutils.c

@@ -175,6 +175,9 @@ target_link_options(kernel
         PRIVATE -Wl,--format=elf32-i386 # will be insert before the rest of the objects
         )
 
+target_link_libraries(kernel
+        PUBLIC MbedTLS::mbedtls)
+
 add_custom_target(
         vectors_S ALL
         COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../tools/vectors.py ${CMAKE_CURRENT_SOURCE_DIR}/vectors.S
