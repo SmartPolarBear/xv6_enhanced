@@ -194,7 +194,9 @@ PACK_STRUCT_END
 #error "One and exactly one of LWIP_EVENT_API and LWIP_CALLBACK_API has to be enabled in your lwipopts.h"
 #endif
 #if (LWIP_ALTCP && LWIP_EVENT_API)
-#error "The application layered tcp API does not work with LWIP_EVENT_API"
+//#error "The application layered tcp API does not work with LWIP_EVENT_API"
+// We handle them differently
+#warning "The application layered tcp API does not work with LWIP_EVENT_API"
 #endif
 #if (MEM_LIBC_MALLOC && MEM_USE_POOLS)
 #error "MEM_LIBC_MALLOC and MEM_USE_POOLS may not both be simultaneously enabled in your lwipopts.h"
