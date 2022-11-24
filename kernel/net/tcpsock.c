@@ -25,114 +25,116 @@
 
 extern kmem_cache_t *socket_cache;
 
-err_t lwip_tcp_event(void *arg, struct tcp_pcb *pcb, enum lwip_event event, struct pbuf *p,
-					 u16_t size, err_t err)
+void tcpsock_err(void *arg, err_t err)
 {
 	socket_t *socket = (socket_t *)arg;
+	socket->pcb = NULL;
+}
 
-	switch (event)
+err_t tcpsock_accept(void *arg, struct tcp_pcb *pcb, err_t err)
+{
+	socket_t *socket = (socket_t *)arg;
+	if (err == ERR_OK)
 	{
-	case LWIP_EVENT_ACCEPT:
-		if (err == ERR_OK)
+		int free = 0;
+		for (free = 0; free < SOCKET_NBACKLOG; ++free)
 		{
-			int free = 0;
-			for (free = 0; free < SOCKET_NBACKLOG; ++free)
+			if (!socket->backlog[free])
 			{
-				if (!socket->backlog[free])
-				{
-					break;
-				}
+				break;
 			}
-			// queue full
-			if (free >= SOCKET_NBACKLOG)
-			{
-				return ERR_MEM;
-			}
-			socket_t *newsocket = kmem_cache_alloc(socket_cache);
-			memset(newsocket, 0, sizeof(socket_t));
-
-			// the passed in pcb is for the new socket
-			newsocket->pcb = pcb;
-
-			netbegin_op();
-			tcp_arg(pcb, newsocket);
-			netend_op();
-
-			newsocket->protocol = socket->protocol;
-			newsocket->type = socket->type;
-			newsocket->opts = socket->opts;
-
-			socket->backlog[free] = newsocket;
-
-			socket->wakeup_retcode = 0;
-			wakeup(&socket->accept_chan);
 		}
-		return ERR_OK;
-	case LWIP_EVENT_SENT:
-		/* ignore */
-		socket->wakeup_retcode = 0;
-		wakeup(&socket->send_chan);
-		return ERR_OK;
-	case LWIP_EVENT_RECV:
-		/* closed or error */
-		if (!p || err != ERR_OK)
-		{
-			if (p)
-			{
-				netbegin_op();
-				pbuf_free(p);
-				netend_op();
-			}
-			socket->recv_closed = TRUE;
-			return ERR_OK;
-		}
-		// buffer hasn't been received
-		if (socket->recv_buf)
+		// queue full
+		if (free >= SOCKET_NBACKLOG)
 		{
 			return ERR_MEM;
 		}
-		/* ack the packet */
+		socket_t *newsocket = kmem_cache_alloc(socket_cache);
+		memset(newsocket, 0, sizeof(socket_t));
+
+		// the passed in pcb is for the new socket
+		newsocket->pcb = pcb;
+		tcp_err(pcb, tcpsock_err);
+
 		netbegin_op();
-		tcp_recved(socket->pcb, p->tot_len);
+		tcp_arg(pcb, newsocket);
 		netend_op();
 
-		socket->recv_buf = p;
-		socket->recv_offset = 0;
+		newsocket->protocol = socket->protocol;
+		newsocket->type = socket->type;
+		newsocket->opts = socket->opts;
+
+		socket->backlog[free] = newsocket;
 
 		socket->wakeup_retcode = 0;
-		wakeup(&socket->recv_chan);
-		return ERR_OK;
-	case LWIP_EVENT_CONNECTED:
-		if (err != ERR_OK)
-		{
-			socket->wakeup_retcode = -ECONNRESET;
-		}
-		else
-		{
-			socket->wakeup_retcode = 0;
-		}
+		wakeup(&socket->accept_chan);
+	}
+	return ERR_OK;
+}
 
-		wakeup(&socket->connect_chan);
+err_t tcpsock_recv(void *arg, struct tcp_pcb *tpcb,
+				   struct pbuf *p, err_t err)
+{
+	socket_t *socket = (socket_t *)arg;
+	if (!p || err != ERR_OK)
+	{
+		if (p)
+		{
+			netbegin_op();
+			pbuf_free(p);
+			netend_op();
+		}
+		socket->recv_closed = TRUE;
 		return ERR_OK;
-	case LWIP_EVENT_POLL:
-		/* ignore */
-		return ERR_OK;
-	case LWIP_EVENT_ERR:
-		/* pcb is already deallocated */
-		socket->pcb = NULL;
-		// do nothing. de-allocation will be done by exit() or manually by the user
-		return ERR_ABRT;
-	default:
-		break;
+	}
+	// buffer hasn't been received
+	if (socket->recv_buf)
+	{
+		return ERR_MEM;
+	}
+	/* ack the packet */
+	netbegin_op();
+	tcp_recved(socket->pcb, p->tot_len);
+	netend_op();
+
+	socket->recv_buf = p;
+	socket->recv_offset = 0;
+
+	socket->wakeup_retcode = 0;
+	wakeup(&socket->recv_chan);
+	return ERR_OK;
+}
+
+err_t tcpsock_sent(void *arg, struct tcp_pcb *tpcb,
+				   u16_t len)
+{
+	socket_t *socket = (socket_t *)arg;
+	socket->wakeup_retcode = 0;
+	wakeup(&socket->send_chan);
+	return ERR_OK;
+}
+
+err_t tcp_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
+{
+	socket_t *socket = (socket_t *)arg;
+	if (err != ERR_OK)
+	{
+		socket->wakeup_retcode = -ECONNRESET;
+	}
+	else
+	{
+		socket->wakeup_retcode = 0;
 	}
 
-	KDEBUG_UNREACHABLE;
+	wakeup(&socket->connect_chan);
+	return ERR_OK;
 }
 
 int tcpalloc(struct socket *socket)
 {
 	netbegin_op();
 	socket->pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
+	tcp_err(socket->pcb, tcpsock_err);
 	if (socket->pcb == NULL)
 	{
 		netend_op();
@@ -149,7 +151,8 @@ int tcpconnect(struct socket *s, struct sockaddr *addr, int addrlen)
 	addrin_byteswap(addr_in);
 
 	netbegin_op();
-	err_t err = tcp_connect(s->pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port, NULL);
+	err_t err = tcp_connect(s->pcb, (ip_addr_t *)&addr_in->sin_addr, addr_in->sin_port,
+							tcp_connected);
 	if (err != ERR_OK)
 	{
 		netend_op();
@@ -186,6 +189,7 @@ int tcplisten(struct socket *s, int backlog)
 	err_t err = 0;
 	pcb = tcp_listen_with_backlog_and_err(pcb, backlog, &err);
 	s->pcb = pcb;
+	tcp_accept(pcb, tcpsock_accept);
 	netend_op();
 
 	if (err == ERR_OK)
@@ -229,6 +233,8 @@ int tcpsend(struct socket *s, void *buf, int len, int flags)
 
 	s->wakeup_retcode = -EWOULDBLOCK;
 	netbegin_op();
+
+	tcp_sent(pcb, tcpsock_sent);
 
 	len = MIN(len, pcb->snd_buf);
 	err_t err = tcp_write(pcb, buf, len, TCP_WRITE_FLAG_COPY);
@@ -280,6 +286,9 @@ int tcpsend(struct socket *s, void *buf, int len, int flags)
 
 int tcprecv(struct socket *s, void *buf, int len, int flags)
 {
+	netbegin_op();
+	tcp_recv(s->pcb, tcpsock_recv);
+	netend_op();
 	return 0; // do nothing. event loop will do everything
 }
 

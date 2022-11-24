@@ -15,18 +15,21 @@
 #include "mmu.h"
 #include "proc.h"
 
-#include "net.h"
 #include "netdb.h"
-#include "socket.h"
-#include "lwip/tcp.h"
-#include "lwip/udp.h"
-#include "lwip/dns.h"
+#include "lwip/altcp.h"
+#include "lwip/altcp_tls.h"
+#include "lwip/altcp_tcp.h"
 
 #include "internal/netdb.h"
 
+static const unsigned char cert[] = {0};
+
 void doh_init()
 {
-
+//	struct altcp_tls_config *conf = altcp_tls_create_config_client(cert, sizeof(cert));
+//	altcp_allocator_t tls_allocator = {
+//		altcp_tls_alloc, conf
+//	};
 }
 
 int doh_query(char *name, netdb_query_type_t type, netdb_answer_t **answer)
