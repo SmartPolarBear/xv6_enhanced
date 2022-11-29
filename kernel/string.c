@@ -130,3 +130,36 @@ int strnlen(const char *s, int n)
 	for (i = 0; i < n && s[i]; i++);
 	return i;
 }
+
+char *strstr(const char *s, const char *t)
+{
+	int slen, tlen;
+
+	slen = strlen(s);
+	tlen = strlen(t);
+	if (tlen > slen)
+	{
+		return 0;
+	}
+	for (slen -= tlen; slen >= 0; slen--)
+	{
+		if (memcmp(s, t, tlen) == 0)
+		{
+			return (char *)s;
+		}
+		s++;
+	}
+	return 0;
+}
+
+char *strchr(const char *s, char c)
+{
+	for (; *s; s++)
+	{
+		if (*s == c)
+		{
+			return (char *)s;
+		}
+	}
+	return 0;
+}

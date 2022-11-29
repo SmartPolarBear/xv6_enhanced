@@ -14,9 +14,9 @@
 
 #define LWIP_ALTCP 1
 #define LWIP_ALTCP_TLS 1
+#define LWIP_ALTCP_TLS_MBEDTLS 1
 
-//#define LWIP_EVENT_API 1
-#define TCP_LISTEN_BACKLOG 1
+#define TCP_LISTEN_BACKLOG 5
 #define SO_REUSE 1
 
 #define LWIP_NETIF_LOOPBACK 1

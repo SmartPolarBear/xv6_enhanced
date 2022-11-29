@@ -22,7 +22,7 @@
 
 #include "internal/netdb.h"
 
-static const unsigned char cert[] = {0};
+//static const unsigned char cert[] = {0};
 
 void doh_init()
 {

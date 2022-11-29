@@ -29,5 +29,12 @@ target_sources(kernel
         PRIVATE api/err.c
         PRIVATE netif/ethernet.c)
 
+target_sources(kernel
+        PRIVATE core/altcp.c
+        PRIVATE core/altcp_tcp.c
+        PRIVATE core/altcp_alloc.c
+        PRIVATE apps/altcp_tls/altcp_tls_mbedtls.c
+        PRIVATE apps/altcp_tls/altcp_tls_mbedtls_mem.c)
+
 target_include_directories(kernel
         PRIVATE include)
