@@ -28,8 +28,8 @@ extern netdb_proto_t doh_proto;
 extern netdb_proto_t bare_dns_proto;
 
 static netdb_proto_t *netdb_protos[] = {
-//	&doh_proto,
 	&bare_dns_proto,
+	&doh_proto,
 };
 
 spinlock_t netdb_lock;
