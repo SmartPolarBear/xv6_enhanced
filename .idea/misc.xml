@@ -4,7 +4,6 @@
   <component name="CidrRootsConfiguration">
     <sourceRoots>
       <file path="$PROJECT_DIR$/kernel/lib/lwip/lwip" />
-      <file path="$PROJECT_DIR$/kernel/lib/mbedtls/mbedtls" />
     </sourceRoots>
     <libraryRoots>
       <file path="$PROJECT_DIR$/kernel/lib/lwip/lwip_official" />
