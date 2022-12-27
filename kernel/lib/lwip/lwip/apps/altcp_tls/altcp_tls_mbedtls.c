@@ -736,7 +736,7 @@ altcp_tls_create_config(int is_server, int have_cert, int have_pkey, int have_ca
 
   mbedtls_ssl_conf_rng(&conf->conf, mbedtls_ctr_drbg_random, &conf->ctr_drbg);
 #if ALTCP_MBEDTLS_DEBUG != LWIP_DBG_OFF
-  mbedtls_ssl_conf_dbg(&conf->conf, altcp_mbedtls_debug, stdout);
+  mbedtls_ssl_conf_dbg(&conf->conf, altcp_mbedtls_debug, NULL);
 #endif
 #if defined(MBEDTLS_SSL_CACHE_C) && ALTCP_MBEDTLS_SESSION_CACHE_TIMEOUT_SECONDS
   mbedtls_ssl_conf_session_cache(&conf->conf, &conf->cache, mbedtls_ssl_cache_get, mbedtls_ssl_cache_set);

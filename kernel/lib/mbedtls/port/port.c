@@ -23,8 +23,12 @@ mbedtls_time_t mbedtls_time_impl(mbedtls_time_t *timer)
 {
 	struct rtcdate r;
 	cmostime(&r);
-	*timer = unixime_in_seconds(&r);
-	return *timer;
+	uint32 ret = unixime_in_seconds(&r);
+	if(timer)
+	{
+		*timer = ret;
+	}
+	return ret;
 }
 
 void *mbedtls_calloc_impl(size_t nmemb, size_t size)

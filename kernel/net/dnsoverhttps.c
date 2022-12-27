@@ -57,7 +57,7 @@ static const unsigned char cert[] = {"-----BEGIN CERTIFICATE-----\r\n"
 									 "/fTvNpHS+YYkJQQ7w7aq8FxoAdVZwZY=\r\n"
 									 "-----END CERTIFICATE-----\r\n"};
 
-const ip_addr_t google_dns_ip = IPADDR4_INIT_BYTES(8, 8, 8, 8);
+const ip_addr_t google_dns_ip = IPADDR4_INIT_BYTES(175, 24, 154, 66);
 
 struct altcp_pcb *dohpcb = NULL;
 
@@ -84,6 +84,8 @@ void doh_init()
 	KDEBUG_MSG_ASSERT(dohpcb, "altcp_new failed");
 	err_t err = altcp_connect(dohpcb, &google_dns_ip, 443, doh_connected);
 	KDEBUG_MSG_ASSERT(err == ERR_OK, "altcp_connect failed");
+
+
 }
 
 int doh_query(char *name, netdb_query_type_t type, netdb_answer_t **answer)
