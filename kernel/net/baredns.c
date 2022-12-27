@@ -80,7 +80,11 @@ kmem_cache_t *name_cache;
 struct udp_pcb *dns_pcb = NULL;
 
 // google dns
-#define DNS_SERVER 0x08080808
+//#define DNS_SERVER 0x08080808
+//#define DNS_PORT 53
+
+// 114 dns
+#define DNS_SERVER 0x72727272
 #define DNS_PORT 53
 
 #define DNS_TIMEOUT 50000
