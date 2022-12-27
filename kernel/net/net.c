@@ -11,6 +11,7 @@
 #include "list.h"
 #include "slab.h"
 #include "net.h"
+#include "memory.h"
 
 #include "lwip/dhcp.h"
 #include "lwip/etharp.h"
@@ -78,12 +79,26 @@ linkoutput(struct netif *netif, struct pbuf *p)
 
 	for (q = p; q; q = q->next)
 	{
-		size_t len = card->opts->send(card, q->payload, q->len);
-		if (len != q->len)
+		char *full = page_alloc();
+		if (!full)
 		{
+			return ERR_MEM;
+		}
+		int len = 0;
+		const int tot= q->tot_len;
+		do
+		{
+			memmove(full + len, q->payload, q->len);
+			len += q->len;
+		} while (len < tot && (q = q->next));
+		size_t res = card->opts->send(card, full, tot);
 
+		if (res != tot)
+		{
+			page_free(full);
 			return ERR_IF;
 		}
+		page_free(full);
 	}
 
 	return ERR_OK;
