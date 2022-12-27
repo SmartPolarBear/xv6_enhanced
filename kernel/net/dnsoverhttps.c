@@ -74,8 +74,8 @@ err_t doh_connected(void *arg, struct altcp_pcb *conn, err_t err)
 
 void doh_init()
 {
-	return;
-	struct altcp_tls_config *conf = altcp_tls_create_config_client(cert, sizeof(cert));
+//	return;
+	struct altcp_tls_config *conf = altcp_tls_create_config_client(NULL, sizeof(cert));
 	KDEBUG_MSG_ASSERT(conf, "altcp_tls_create_config_client failed");
 	altcp_allocator_t tls_allocator = {
 		altcp_tls_alloc, conf
