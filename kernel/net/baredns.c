@@ -25,7 +25,6 @@
 
 #include "internal/netdb.h"
 
-
 typedef struct
 {
 	uint16 xid;      /* Randomly chosen identifier */
@@ -88,7 +87,6 @@ struct udp_pcb *dns_pcb = NULL;
 #define DNS_PORT 53
 
 #define DNS_TIMEOUT 50000
-
 
 static inline void buf_cleanup()
 {
@@ -362,9 +360,18 @@ static inline struct netdb_answer *make_query(char *name, int type)
 	{
 		if (sleepddl(&dns_pcb, &netdb_lock, DNS_TIMEOUT) == 0)
 		{
+			netbegin_op();
+			pbuf_free(pbuf);
+			netend_op();
+
 			return NULL;
 		}
 	}
+
+	netbegin_op();
+	pbuf_free(pbuf);
+	netend_op();
+
 	return query_ans;
 }
 
@@ -517,6 +524,7 @@ int proto_dump_answer(const netdb_answer_t *p)
 void baredns_shutdown()
 {
 	udp_disconnect(dns_pcb);
+	udp_remove(dns_pcb);
 	kmem_cache_destroy(addr_cache);
 	kmem_cache_destroy(name_cache);
 }
