@@ -12,10 +12,6 @@
 #define LWIP_ICMP 1
 #define LWIP_RAW 1
 
-#define LWIP_ALTCP 1
-#define LWIP_ALTCP_TLS 1
-#define LWIP_ALTCP_TLS_MBEDTLS 1
-
 #define TCP_LISTEN_BACKLOG 5
 #define SO_REUSE 1
 
