@@ -1,5 +1,6 @@
 #pragma once
 
+#include "date.h"
 #define __REV__ "0.0.1"
 
 struct buf;
@@ -39,7 +40,7 @@ void consoleintr(int(*)(void));
 void panic(char *) __attribute__((noreturn));
 
 // date.c
-uint32 unixime_in_seconds(const struct rtcdate *date);
+uint32 unixtime_in_seconds(const rtcdate_t *date);
 
 // exec.c
 int exec(char *, char **);

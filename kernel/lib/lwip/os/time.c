@@ -10,6 +10,6 @@ sys_now(void)
 {
 	rtcdate_t date;
 	cmostime(&date);
-	uint32 ret = unixime_in_seconds(&date) * 1000u;
+	uint32 ret = unixtime_in_seconds(&date) * 1000u;
 	return ret;
 }

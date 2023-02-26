@@ -21,7 +21,7 @@ static int days_per_year[2] = {
 	365, 366
 };
 
-uint32 unixime_in_seconds(const rtcdate_t *date)
+uint32 unixtime_in_seconds(const rtcdate_t *date)
 {
 	uint32 ts = 0;
 

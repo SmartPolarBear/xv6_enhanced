@@ -17,7 +17,7 @@ int sys_time(void)
 	rtcdate_t date;
 	cmostime(&date);
 
-	uint32 ret = unixime_in_seconds(&date);
+	uint32 ret = unixtime_in_seconds(&date);
 	if (tloc)
 	{
 		*tloc = ret;
