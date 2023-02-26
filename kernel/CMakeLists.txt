@@ -82,43 +82,29 @@ add_custom_command(TARGET initcode_obj POST_BUILD
 
 # kernel
 add_executable(kernel
-        atoi.c
-        bio.c
         console.c
         debug.c
         datetime.c
-        exec.c
-        file.c
-        fs.c
         ide.c
         ioapic.c
-        kalloc.c
         kbd.c
         lapic.c
-        log.c
         main.c
         mp.c
-        memory.c
         pci.c
         picirq.c
-        pipe.c
-        proc.c
-        pmm.c
-        printfmt.c
         sleeplock.c
         spinlock.c
-        string.c
-        slab.c
         syscall.c
-        sysfile.c
-        sysproc.c
         sysdatetime.c
         trap.c
-        uart.c
-        vfs.c
-        vmm.c)
+        uart.c)
 
 add_subdirectory(lib)
+
+add_subdirectory(fs)
+add_subdirectory(mm)
+add_subdirectory(proc)
 add_subdirectory(net)
 
 target_compile_definitions(kernel
