@@ -136,7 +136,7 @@ cprintf(char *fmt, ...)
 //PAGEBREAK: 50
 #define BACKSPACE 0x100
 #define CRTPORT 0x3d4
-static ushort *crt = (ushort *)P2V(0xb8000);  // CGA memory
+static ushort *cga = (ushort *)P2V(0xb8000);  // CGA memory
 
 static void
 cgaputc(int c)
@@ -162,7 +162,7 @@ cgaputc(int c)
 	}
 	else
 	{
-		crt[pos++] = (c & 0xff) | 0x0700;
+		cga[pos++] = (c & 0xff) | 0x0700;
 	}  // black on white
 
 	if (pos < 0 || pos > 25 * 80)
@@ -172,16 +172,16 @@ cgaputc(int c)
 
 	if ((pos / 80) >= 24)
 	{  // Scroll up.
-		memmove(crt, crt + 80, sizeof(crt[0]) * 23 * 80);
+		memmove(cga, cga + 80, sizeof(cga[0]) * 23 * 80);
 		pos -= 80;
-		memset(crt + pos, 0, sizeof(crt[0]) * (24 * 80 - pos));
+		memset(cga + pos, 0, sizeof(cga[0]) * (24 * 80 - pos));
 	}
 
 	outb(CRTPORT, 14);
 	outb(CRTPORT + 1, pos >> 8);
 	outb(CRTPORT, 15);
 	outb(CRTPORT + 1, pos);
-	crt[pos] = ' ' | 0x0700;
+	cga[pos] = ' ' | 0x0700;
 }
 
 void

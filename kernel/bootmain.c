@@ -36,10 +36,8 @@ bootmain(void)
 	// Load each program segment (ignores ph flags).
 	ph = (struct prog64hdr *)((uchar *)elf + elf->phoff);
 	eph = ph + elf->phnum;
-	*((int *)0xb8004) = 0x07690748;
 	for (; ph < eph; ph++)
 	{
-		*((int *)0xb8008) = 0x07690748;
 		pa = (uchar *)ph->paddr;
 		readseg(pa, ph->filesz, ph->off);
 		if (ph->memsz > ph->filesz)

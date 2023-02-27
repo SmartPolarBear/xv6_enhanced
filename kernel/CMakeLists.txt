@@ -71,6 +71,12 @@ target_link_options(boot64 BEFORE
         PRIVATE -Wl,--build-id=none
         PRIVATE -T ${CMAKE_CURRENT_SOURCE_DIR}/boot64.ld)
 
+add_custom_command(TARGET boot64 POST_BUILD
+        COMMAND objdump -S $<TARGET_FILE:boot64> > ${CMAKE_BINARY_DIR}/boot64.asm
+        COMMAND objdump -t $<TARGET_FILE:boot64> > ${CMAKE_BINARY_DIR}/boot64.sym
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+
 # entryother 
 add_executable(entryother_obj entryother.S)
 
