@@ -86,3 +86,5 @@ typedef __builtin_va_list va_list;
 
 #define byteswap16(x) __builtin_bswap16(x)
 #define byteswap32(x) __builtin_bswap32(x)
+
+#define PACKED __attribute__((packed))

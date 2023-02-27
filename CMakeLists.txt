@@ -31,8 +31,9 @@ add_subdirectory(kernel)
 add_custom_target(xv6_img ALL
         COMMAND dd if=/dev/zero of=${CMAKE_CURRENT_SOURCE_DIR}/xv6.img count=10000
         COMMAND dd if=${CMAKE_BINARY_DIR}/bootblock of=xv6.img conv=notrunc
-        COMMAND dd if=$<TARGET_FILE:kernel> of=${CMAKE_CURRENT_SOURCE_DIR}/xv6.img seek=1 conv=notrunc
-        DEPENDS kernel bootblock_obj
+        COMMAND dd if=$<TARGET_FILE:boot64> of=${CMAKE_CURRENT_SOURCE_DIR}/xv6.img seek=1 conv=notrunc
+        COMMAND dd if=$<TARGET_FILE:kernel> of=${CMAKE_CURRENT_SOURCE_DIR}/xv6.img seek=12 conv=notrunc
+        DEPENDS kernel bootblock_obj boot64
         BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/xv6.img
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating xv6.img ramdisk")
