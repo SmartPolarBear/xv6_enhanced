@@ -6,24 +6,23 @@ enum colors
 	COLOR_ERROR = 0x1f
 };
 
-static volatile uint16 *cga = (uint16 *)0xb8000;
+// bootcon64.c
+extern void boot_puts(const char *s, uint8 color);
+extern void set_cursor(int pos);
 
-static void boot_putc(const char c, int color)
-{
-	static int pos = 3;
-	cga[0] = (c | 0x0700);
-}
-
-void boot_cls()
-{
-
-}
+// bootdisk64.c
+void load_kernel();
 
 int boot64main()
 {
-	cga[3] = 0x0769;
-	cga[4] = 0x4807;
-	boot_putc('F', COLOR_DEFAULT);
+	// "STARTING XV6" = 12
+	set_cursor(12);
+
+	load_kernel();
+
+	// should not reach here normally.
+	boot_puts("UNABLE TO LOAD KERNEL.", COLOR_ERROR);
+
 	for (;;)
 	{
 	}

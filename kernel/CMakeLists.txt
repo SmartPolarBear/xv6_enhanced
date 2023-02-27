@@ -29,7 +29,7 @@ add_custom_command(TARGET bootblock_obj POST_BUILD
         )
 
 # boot64
-add_executable(boot64 boot64.S bootmain64.c)
+add_executable(boot64 boot64.S bootmain64.c bootcon64.c bootdisk64.c)
 
 target_include_directories(boot64 PRIVATE ../include)
 
