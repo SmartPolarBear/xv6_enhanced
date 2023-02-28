@@ -1,4 +1,4 @@
-#include <types.h>
+#include "types.h"
 
 enum colors
 {
@@ -17,11 +17,15 @@ int boot64main()
 {
 	// "STARTING XV6" = 12
 	set_cursor(12);
+	boot_puts("...", COLOR_DEFAULT);
+	set_cursor(80);
+
+
 
 	load_kernel();
 
 	// should not reach here normally.
-	boot_puts("UNABLE TO LOAD KERNEL.", COLOR_ERROR);
+	boot_puts("KERNEL EXITS UNEXPECTEDLY.", COLOR_ERROR);
 
 	for (;;)
 	{
