@@ -1,5 +1,7 @@
 #include "types.h"
 #include "x86.h"
+#include "elf.h"
+#include "memlayout.h"
 
 #define SECTSIZE  512
 
@@ -52,5 +54,41 @@ readseg(uchar *pa, uint count, uint offset)
 
 void load_kernel()
 {
+	struct elf64hdr *elf;
+	struct prog64hdr *ph, *eph;
+	uchar *pa;
 
+	elf = (struct elf64hdr *)(0x10000 + 12 * SECTSIZE);  // scratch space
+
+	// Read 1st page off disk
+	readseg((uchar *)elf, 4096, 12 * SECTSIZE);
+
+	// Is this an ELF executable?
+	if (*((uint32 *)elf->elf) != ELF_MAGIC)
+	{
+		return;  // let bootasm.S handle error
+	}
+
+	// 64bit?
+	if (elf->elf[EI_CLASS] != ELFCLASS64)
+	{
+		return;
+	}
+
+	// Load each program segment (ignores ph flags).
+	ph = (struct prog64hdr *)((uchar *)elf + elf->phoff);
+	eph = ph + elf->phnum;
+	for (; ph < eph; ph++)
+	{
+		pa = (uchar *)ph->paddr;
+		readseg(pa, ph->filesz, ph->off);
+		if (ph->memsz > ph->filesz)
+		{
+			stosb(pa + ph->filesz, 0, ph->memsz - ph->filesz);
+		}
+	}
+
+	// Call the entry point from the ELF header.
+	// Does not return!
+	((void (*)(void))(elf->entry))();
 }

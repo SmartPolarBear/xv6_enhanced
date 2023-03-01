@@ -20,8 +20,6 @@ int boot64main()
 	boot_puts("...", COLOR_DEFAULT);
 	set_cursor(80);
 
-
-
 	load_kernel();
 
 	// should not reach here normally.
